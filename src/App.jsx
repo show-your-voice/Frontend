@@ -10,13 +10,13 @@ const Page = styled.main`
   align-items: flex-start;
   justify-content: center;
   min-height: 100dvh;
-  padding: ${({ theme, $detail }) => $detail ? theme.report.detail.pagePadding : theme.report.layout.pagePadding};
-  background: ${({ theme }) => theme.report.color.background};
+  padding: ${({ theme, $detail }) => $detail ? 0 : theme.report.layout.pagePadding};
+  background: ${({ theme, $detail }) => $detail ? theme.report.color.surface : theme.report.color.background};
   font-family: ${({ theme }) => theme.report.font.family};
   color-scheme: light;
 
   @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
-    padding: ${({ theme }) => theme.space[3]};
+    padding: ${({ theme, $detail }) => $detail ? 0 : theme.space[3]};
   }
 `
 

@@ -4,6 +4,7 @@ import OutlineButton from '../../components/OutlineButton.jsx'
 import StatusBadge from '../../components/StatusBadge.jsx'
 import ReportAttachments from './ReportAttachments.jsx'
 import ReportInfoList from './ReportInfoList.jsx'
+import ReportStatusTimeline from './ReportStatusTimeline.jsx'
 
 const Panel = styled.article`
   display: flex;
@@ -11,14 +12,11 @@ const Panel = styled.article`
   width: 100%;
   max-width: ${({ theme }) => theme.report.detail.width};
   min-height: ${({ theme }) => theme.report.detail.minHeight};
-  padding: ${({ theme }) => theme.report.detail.padding};
-  border-radius: ${({ theme }) => theme.report.detail.radius};
+  padding: 0 ${({ theme }) => theme.space[6]} ${({ theme }) => theme.report.detail.paddingBottom};
   background: ${({ theme }) => theme.report.color.surface};
 
-  @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
-    min-height: calc(100dvh - 24px);
-    padding: ${({ theme }) => theme.space[6]};
-    border-radius: ${({ theme }) => theme.report.detail.mobileRadius};
+  @media (max-width: ${({ theme }) => theme.report.detail.compactBreakpoint}) {
+    min-height: 100dvh;
   }
 `
 
@@ -33,7 +31,7 @@ const BackButton = styled.button`
   border: 0;
   background: transparent;
   color: ${({ theme }) => theme.report.color.body};
-  font-size: ${({ theme }) => theme.report.font.title};
+  font-size: ${({ theme }) => theme.report.font.body};
   line-height: ${({ theme }) => theme.report.font.lineHeight};
   cursor: pointer;
 
@@ -54,7 +52,7 @@ const Heading = styled.h1`
   word-break: keep-all;
   overflow-wrap: anywhere;
 
-  @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
+  @media (max-width: ${({ theme }) => theme.report.detail.compactBreakpoint}) {
     font-size: ${({ theme }) => theme.report.font.heading};
   }
 `
@@ -62,6 +60,10 @@ const Heading = styled.h1`
 const Content = styled.div`
   display: grid;
   gap: ${({ theme }) => theme.space[8]};
+`
+
+const History = styled.div`
+  margin-bottom: ${({ theme }) => theme.space[6]};
 `
 
 const Description = styled.p`
@@ -73,7 +75,7 @@ const Description = styled.p`
   word-break: keep-all;
   overflow-wrap: anywhere;
 
-  @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
+  @media (max-width: ${({ theme }) => theme.report.detail.compactBreakpoint}) {
     font-size: ${({ theme }) => theme.report.font.body};
   }
 `
@@ -121,6 +123,14 @@ export default function ReportDetail({ report, onBack, onDelete }) {
         <StatusBadge tone={report.status.tone} large>{report.status.label}</StatusBadge>
         <Heading id="report-detail-heading" ref={headingRef} tabIndex={-1}>{report.title}</Heading>
       </header>
+      <History>
+        <ReportStatusTimeline
+          currentStatus={report.status.tone}
+          receivedAt={report.date}
+          startedAt={report.startedAt}
+          completedAt={report.completedAt}
+        />
+      </History>
       <Content>
         <ReportInfoList {...report} author={report.authorDisplay ?? report.author} />
         <ReportAttachments photos={report.photos} />
@@ -133,7 +143,7 @@ export default function ReportDetail({ report, onBack, onDelete }) {
         )}
       </Content>
       <Actions>
-        <OutlineButton danger large disabled={!onDelete} onClick={onDelete}>게시물 삭제</OutlineButton>
+        <OutlineButton danger large tonal disabled={!onDelete} onClick={onDelete}>게시물 삭제</OutlineButton>
       </Actions>
     </Panel>
   )

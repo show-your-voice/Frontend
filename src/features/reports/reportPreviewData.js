@@ -15,8 +15,8 @@ export const reportPreviewData = [
     description: '2번째 세면대 수도꼭지를 돌려도 물이 나오지 않습니다.',
     date: '2026-10-12',
     author: '김학생',
-    location: '청죽관 4층 · 화장실(남)',
-    status: { tone: 'inProgress', label: '처리 중' },
+    location: '창의관 4층 · 화장실(남)',
+    status: { tone: 'received', label: '접수' },
   },
   {
     id: 'preview-2',

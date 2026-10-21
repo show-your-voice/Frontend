@@ -9,7 +9,7 @@ const Gallery = styled.ul`
   padding: 0;
   list-style: none;
 
-  @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
+  @media (max-width: ${({ theme }) => theme.report.detail.compactBreakpoint}) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 `

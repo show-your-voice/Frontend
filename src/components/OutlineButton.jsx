@@ -8,10 +8,10 @@ const Button = styled.button`
   min-height: ${({ theme, $large }) =>
     $large ? theme.report.detail.deleteHeight : theme.report.overview.buttonHeight};
   padding: ${({ theme }) => theme.space[2]} ${({ theme }) => theme.space[4]};
-  border: 2px solid ${({ theme, $danger }) =>
-    $danger ? theme.report.color.danger : theme.report.color.border};
+  border: 2px solid ${({ theme, $danger, $tonal }) =>
+    $tonal ? 'transparent' : $danger ? theme.report.color.danger : theme.report.color.border};
   border-radius: ${({ theme }) => theme.radius.full};
-  background: ${({ theme }) => theme.report.color.surface};
+  background: ${({ theme, $tonal }) => $tonal ? theme.report.color.dangerSurface : theme.report.color.surface};
   color: ${({ theme, $danger }) =>
     $danger ? theme.report.color.danger : theme.report.color.accent};
   font-size: ${({ theme, $large }) =>
@@ -37,9 +37,9 @@ const Button = styled.button`
   }
 `
 
-export default function OutlineButton({ children, danger = false, large = false, ...props }) {
+export default function OutlineButton({ children, danger = false, large = false, tonal = false, ...props }) {
   return (
-    <Button type="button" $danger={danger} $large={large} {...props}>
+    <Button type="button" $danger={danger} $large={large} $tonal={tonal} {...props}>
       {children}
     </Button>
   )

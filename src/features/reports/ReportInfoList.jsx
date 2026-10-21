@@ -27,10 +27,10 @@ const Row = styled.div`
     min-width: 0;
     margin: 0;
     color: ${({ theme }) => theme.report.color.title};
-    font-size: ${({ theme }) => theme.report.font.title};
+    font-size: ${({ theme }) => theme.report.font.body};
   }
 
-  @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
+  @media (max-width: ${({ theme }) => theme.report.detail.compactBreakpoint}) {
     grid-template-columns: ${({ theme }) => theme.report.detail.mobileInfoLabelWidth} minmax(0, 1fr);
     gap: ${({ theme }) => theme.space[4]};
 
@@ -45,7 +45,7 @@ const LocationPart = styled.span`
   margin-right: ${({ theme }) => theme.space[1]};
 `
 
-export default function ReportInfoList({ location, category, author, date, manager, completedAt }) {
+export default function ReportInfoList({ location, category, author, date, manager }) {
   const fields = [
     {
       label: '장소',
@@ -57,7 +57,6 @@ export default function ReportInfoList({ location, category, author, date, manag
     { label: '신고자', value: author },
     { label: '접수일', value: date && <time dateTime={date}>{date.replaceAll('-', '.')}</time> },
     { label: '담당 관리자', value: manager },
-    { label: '처리 완료일', value: completedAt && <time dateTime={completedAt}>{completedAt.replaceAll('-', '.')}</time> },
   ]
 
   return (
