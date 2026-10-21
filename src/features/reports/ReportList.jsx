@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
 import FilterChip from '../../components/FilterChip.jsx'
 import ReportCard from './ReportCard.jsx'
@@ -64,15 +64,20 @@ const List = styled.ul`
   }
 `
 
-export default function ReportList({ reports }) {
+export default function ReportList({ reports, focusHeading = false }) {
+  const headingRef = useRef(null)
   const [selectedStatus, setSelectedStatus] = useState('all')
+  useEffect(() => {
+    if (focusHeading) headingRef.current?.focus()
+  }, [focusHeading])
+
   const visibleReports = selectedStatus === 'all'
     ? reports
     : reports.filter((report) => report.status.tone === selectedStatus)
 
   return (
     <Panel aria-labelledby="report-list-heading">
-      <Heading id="report-list-heading">
+      <Heading id="report-list-heading" ref={headingRef} tabIndex={-1}>
         불편 신고 <Count aria-live="polite">{visibleReports.length}</Count>
       </Heading>
       <Filters role="group" aria-label="처리 상태 필터">

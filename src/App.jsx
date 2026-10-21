@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import styled from 'styled-components'
 import ReportList from './features/reports/ReportList.jsx'
-import { reportPreviewData } from './features/reports/reportPreviewData.js'
+import ReportOverview from './features/reports/ReportOverview.jsx'
+import { reportOverviewPreviewData, reportPreviewData } from './features/reports/reportPreviewData.js'
 
 const Page = styled.main`
   display: flex;
@@ -18,9 +20,18 @@ const Page = styled.main`
 `
 
 export default function App() {
+  const [showAllReports, setShowAllReports] = useState(false)
+
   return (
     <Page>
-      <ReportList reports={reportPreviewData} />
+      {showAllReports ? (
+        <ReportList reports={reportPreviewData} focusHeading />
+      ) : (
+        <ReportOverview
+          {...reportOverviewPreviewData}
+          onViewAll={() => setShowAllReports(true)}
+        />
+      )}
     </Page>
   )
 }

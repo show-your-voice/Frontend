@@ -1,4 +1,13 @@
 // 첨부 시안의 퍼블리싱 확인용 예시이며 서버 API 응답 형식이 아니다.
+export const reportOverviewPreviewData = {
+  location: '청죽관 4층',
+  statuses: [
+    { tone: 'received', label: '접수', count: 4 },
+    { tone: 'inProgress', label: '처리 중', count: 2 },
+    { tone: 'completed', label: '처리 완료', count: 1 },
+  ],
+}
+
 export const reportPreviewData = [
   {
     id: 'preview-1',
