@@ -1,4 +1,5 @@
 import styled from 'styled-components'
+import OutlineButton from '../../components/OutlineButton.jsx'
 import ReportStatusSummary from './ReportStatusSummary.jsx'
 
 const Panel = styled.section`
@@ -44,34 +45,8 @@ const Hint = styled.p`
   }
 `
 
-const ViewAllButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: ${({ theme }) => theme.report.overview.buttonHeight};
+const Actions = styled.div`
   margin-top: ${({ theme }) => theme.space[5]};
-  padding: ${({ theme }) => theme.space[2]} ${({ theme }) => theme.space[4]};
-  border: 2px solid ${({ theme }) => theme.report.color.border};
-  border-radius: ${({ theme }) => theme.radius.full};
-  background: ${({ theme }) => theme.report.color.surface};
-  color: ${({ theme }) => theme.report.color.accent};
-  font-size: ${({ theme }) => theme.report.font.mobileBody};
-  line-height: ${({ theme }) => theme.report.font.lineHeight};
-  cursor: pointer;
-
-  &:hover {
-    background: ${({ theme }) => theme.report.color.hover};
-  }
-
-  &:active {
-    background: ${({ theme }) => theme.report.color.selected};
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${({ theme }) => theme.report.color.focus};
-    outline-offset: 3px;
-  }
 `
 
 export default function ReportOverview({ location, statuses, onViewAll }) {
@@ -86,9 +61,9 @@ export default function ReportOverview({ location, statuses, onViewAll }) {
         </svg>
         <span>핀을 누르면 장소별 신고와 로드뷰를 볼 수 있어요</span>
       </Hint>
-      <ViewAllButton type="button" onClick={onViewAll}>
-        전체 신고 목록 보기
-      </ViewAllButton>
+      <Actions>
+        <OutlineButton onClick={onViewAll}>전체 신고 목록 보기</OutlineButton>
+      </Actions>
     </Panel>
   )
 }

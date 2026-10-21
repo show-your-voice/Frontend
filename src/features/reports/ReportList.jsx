@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import styled from 'styled-components'
 import FilterChip from '../../components/FilterChip.jsx'
 import ReportCard from './ReportCard.jsx'
@@ -64,12 +64,13 @@ const List = styled.ul`
   }
 `
 
-export default function ReportList({ reports, focusHeading = false }) {
+export default function ReportList({ reports, selectedStatus = 'all', onStatusChange, onSelectReport, focusReportId }) {
   const headingRef = useRef(null)
-  const [selectedStatus, setSelectedStatus] = useState('all')
+  const focusedReportRef = useRef(null)
   useEffect(() => {
-    if (focusHeading) headingRef.current?.focus()
-  }, [focusHeading])
+    const target = focusedReportRef.current ?? headingRef.current
+    target?.focus()
+  }, [focusReportId])
 
   const visibleReports = selectedStatus === 'all'
     ? reports
@@ -85,7 +86,7 @@ export default function ReportList({ reports, focusHeading = false }) {
           <FilterChip
             key={filter.value}
             selected={selectedStatus === filter.value}
-            onClick={() => setSelectedStatus(filter.value)}
+            onClick={() => onStatusChange(filter.value)}
           >
             {filter.label}
           </FilterChip>
@@ -93,7 +94,13 @@ export default function ReportList({ reports, focusHeading = false }) {
       </Filters>
       <List>
         {visibleReports.map((report) => (
-          <li key={report.id}><ReportCard {...report} /></li>
+          <li key={report.id}>
+            <ReportCard
+              {...report}
+              onOpen={() => onSelectReport(report)}
+              buttonRef={report.id === focusReportId ? focusedReportRef : undefined}
+            />
+          </li>
         ))}
       </List>
     </Panel>

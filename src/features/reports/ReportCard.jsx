@@ -2,6 +2,7 @@ import styled from 'styled-components'
 import StatusBadge from '../../components/StatusBadge.jsx'
 
 const Card = styled.article`
+  position: relative;
   min-width: 0;
   padding: ${({ theme }) => theme.report.layout.cardPaddingBlock}
     ${({ theme }) => theme.report.layout.cardPaddingInline};
@@ -9,9 +10,38 @@ const Card = styled.article`
   border-radius: ${({ theme }) => theme.report.radius.card};
   background: ${({ theme }) => theme.report.color.surface};
 
+  &:focus-within {
+    outline: 2px solid ${({ theme }) => theme.report.color.focus};
+    outline-offset: 3px;
+  }
+
   @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
     padding: ${({ theme }) => theme.space[5]};
   }
+`
+
+const OpenButton = styled.button`
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    border-radius: ${({ theme }) => theme.report.radius.card};
+  }
+
+  &:focus-visible { outline: none; }
 `
 
 const CardHeader = styled.div`
@@ -87,11 +117,15 @@ const Metadata = styled.ul`
   }
 `
 
-export default function ReportCard({ title, description, date, author, location, status }) {
+export default function ReportCard({ title, description, date, author, location, status, onOpen, buttonRef }) {
   return (
     <Card>
       <CardHeader>
-        <Title title={title}>{title}</Title>
+        <Title title={title}>
+          <OpenButton ref={buttonRef} type="button" onClick={onOpen} aria-label={`${title} 상세 보기`}>
+            {title}
+          </OpenButton>
+        </Title>
         <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
       </CardHeader>
       <Description title={description}>{description}</Description>
