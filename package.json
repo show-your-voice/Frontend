@@ -7,8 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint .",
-    "react:doctor": "npx react-doctor@latest"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.1.1",
@@ -23,8 +22,6 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
-    "react-grab": "^0.2.0",
-    "react-scan": "^0.5.7"
+    "globals": "^16.5.0"
   }
 }
