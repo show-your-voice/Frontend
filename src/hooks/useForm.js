@@ -6,10 +6,14 @@ export default function useForm(initialValues, validate, onValid) {
   const [errors, setErrors] = useState({})
   const [submitted, setSubmitted] = useState(false)
 
-  function handleChange(event) {
-    const nextValues = { ...values, [event.target.name]: event.target.value }
+  function setValue(name, value) {
+    const nextValues = { ...values, [name]: value }
     setValues(nextValues)
     if (submitted) setErrors(validate(nextValues))
+  }
+
+  function handleChange(event) {
+    setValue(event.target.name, event.target.value)
   }
 
   function handleSubmit(event) {
@@ -27,5 +31,5 @@ export default function useForm(initialValues, validate, onValid) {
     onValid?.(values)
   }
 
-  return { values, errors, handleChange, handleSubmit }
+  return { values, errors, setValue, handleChange, handleSubmit }
 }
