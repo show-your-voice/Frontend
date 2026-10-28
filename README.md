@@ -4,7 +4,9 @@ Frontend foundation for Show Your Voice, built with Vite, React, JavaScript, and
 
 ## Scripts
 
-- `npm run dev` starts the Vite development server.
+- `npm run dev` starts the Vite development server on `http://localhost:3000`.
+  `/api` requests are proxied to the backend at `http://localhost:8080`.
+  Port 3000 is fixed because the backend CORS allows only `localhost:3000` and `3001`.
 - `npm run build` creates the production build in `dist`.
 - `npm run preview` serves the production build locally.
 - `npm run lint` runs ESLint.
