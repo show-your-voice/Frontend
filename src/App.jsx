@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import styled from 'styled-components'
+import LoginForm from './features/auth/LoginForm.jsx'
+import SignupForm from './features/auth/SignupForm.jsx'
 import ReportList from './features/reports/ReportList.jsx'
 import ReportOverview from './features/reports/ReportOverview.jsx'
 import ReportDetail from './features/reports/ReportDetail.jsx'
@@ -23,7 +25,7 @@ const Page = styled.main`
 `
 
 export default function App() {
-  const [view, setView] = useState('overview')
+  const [view, setView] = useState('login')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedReport, setSelectedReport] = useState(null)
 
@@ -34,6 +36,15 @@ export default function App() {
   function openReport(report) {
     setSelectedReport({ ...report, ...reportDetailPreviewData[report.id] })
     setView('detail')
+  }
+
+  // API 연동 전 미리보기: 입력 검증을 통과하면 다음 화면으로 넘어간다.
+  if (view === 'login') {
+    return <LoginForm onLogin={() => setView('overview')} onSignupClick={() => setView('signup')} />
+  }
+
+  if (view === 'signup') {
+    return <SignupForm onSignup={() => setView('login')} onLoginClick={() => setView('login')} />
   }
 
   return (
