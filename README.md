@@ -9,6 +9,20 @@ Frontend foundation for Show Your Voice, built with Vite, React, JavaScript, and
 - `npm run preview` serves the production build locally.
 - `npm run lint` runs ESLint.
 
+## 담당자 정보 미리보기
+
+개발 서버에서 `/managers`를 열면 전역 헤더를 제외한 담당자 정보 화면을
+확인할 수 있습니다. `/`의 기존 신고 현황·목록·상세 미리보기도 유지합니다.
+
+`ManagerInfoPage`는 `managers` 배열을 props로 받으며 `PageIntro`,
+`ManagerTable`, `ManagerTableRow`, `ManagerLocations`, `LocationTag`를
+조합합니다. 각 담당자의 표시 형식은 `{ id, name, email, locations }`이며
+`locations`는 장소 문자열 배열입니다. `managerPreviewData.js`는 시안의
+퍼블리싱 예시 데이터이며 실제 조회 API와는 별도로 관리합니다.
+
+640px 이하에서는 이름·이메일 아래에 장소를 배치합니다. 빈 목록과 누락된
+정보도 표시하며, 긴 이메일·장소는 화면 너비 안에서 줄바꿈합니다.
+
 ## Stack
 
 - Vite
