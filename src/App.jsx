@@ -6,6 +6,7 @@ import SignupForm from './features/auth/SignupForm.jsx'
 import ReportList from './features/reports/ReportList.jsx'
 import ReportOverview from './features/reports/ReportOverview.jsx'
 import ReportDetail from './features/reports/ReportDetail.jsx'
+import ReportForm from './features/reports/ReportForm.jsx'
 import { reportDetailPreviewData, reportOverviewPreviewData, reportPreviewData } from './features/reports/reportPreviewData.js'
 import ManagerInfoPage from './features/managers/ManagerInfoPage.jsx'
 import { managerPreviewData } from './features/managers/managerPreviewData.js'
@@ -43,6 +44,10 @@ export default function App() {
 
   if (['/managers', '/managers/'].includes(window.location.pathname)) {
     return <ManagerInfoPage managers={managerPreviewData} />
+  }
+
+  if (['/reports/new', '/reports/new/'].includes(window.location.pathname)) {
+    return <ReportForm onCancel={() => window.location.assign('/')} />
   }
 
   function openReport(report) {
