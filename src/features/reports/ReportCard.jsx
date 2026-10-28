@@ -4,10 +4,9 @@ import StatusBadge from '../../components/StatusBadge.jsx'
 const Card = styled.article`
   position: relative;
   min-width: 0;
-  padding: ${({ theme }) => theme.report.layout.cardPaddingBlock}
-    ${({ theme }) => theme.report.layout.cardPaddingInline};
-  border: 2px solid ${({ theme }) => theme.report.color.border};
-  border-radius: ${({ theme }) => theme.report.radius.card};
+  padding: ${({ theme }) => theme.space[4]} ${({ theme }) => theme.space[5]};
+  border: 1.5px solid #f4cdde;
+  border-radius: 16px;
   background: ${({ theme }) => theme.report.color.surface};
 
   &:focus-within {
@@ -49,7 +48,7 @@ const CardHeader = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: ${({ theme }) => theme.space[3]};
-  margin-bottom: ${({ theme }) => theme.space[3]};
+  margin-bottom: ${({ theme }) => theme.space[2]};
 `
 
 const Title = styled.h2`
@@ -57,28 +56,28 @@ const Title = styled.h2`
   margin: 0;
   overflow: hidden;
   color: ${({ theme }) => theme.report.color.title};
-  font-size: ${({ theme }) => theme.report.font.title};
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 500;
   line-height: ${({ theme }) => theme.report.font.lineHeight};
   text-overflow: ellipsis;
   white-space: nowrap;
 
   @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
-    font-size: ${({ theme }) => theme.report.font.small};
+    font-size: 16px;
   }
 `
 
 const Description = styled.p`
-  margin: 0 0 ${({ theme }) => theme.space[3]};
+  margin: 0 0 ${({ theme }) => theme.space[2]};
   overflow: hidden;
   color: ${({ theme }) => theme.report.color.body};
-  font-size: ${({ theme }) => theme.report.font.body};
+  font-size: 14px;
   line-height: ${({ theme }) => theme.report.font.lineHeight};
   text-overflow: ellipsis;
   white-space: nowrap;
 
   @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
-    font-size: ${({ theme }) => theme.report.font.mobileBody};
+    font-size: 14px;
   }
 `
 
@@ -91,7 +90,7 @@ const Metadata = styled.ul`
   padding: 0;
   list-style: none;
   color: ${({ theme }) => theme.report.color.muted};
-  font-size: ${({ theme }) => theme.report.font.small};
+  font-size: 13px;
   line-height: ${({ theme }) => theme.report.font.lineHeight};
 
   li {
@@ -105,7 +104,7 @@ const Metadata = styled.ul`
   }
 
   @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
-    font-size: ${({ theme }) => theme.report.font.mobileSmall};
+    font-size: 13px;
 
     li:last-child {
       flex-basis: 100%;
@@ -132,7 +131,7 @@ export default function ReportCard({ title, description, date, author, location,
       <Metadata aria-label="신고 정보">
         <li><time dateTime={date}>{date.replaceAll('-', '.')}</time></li>
         <li>{author}</li>
-        <li>{location}</li>
+        {location && <li>{location}</li>}
       </Metadata>
     </Card>
   )

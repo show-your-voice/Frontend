@@ -4,16 +4,15 @@ const Chip = styled.button`
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: ${({ theme }) => theme.report.layout.filterHeight};
-  padding: ${({ theme }) => theme.space[2]} ${({ theme }) => theme.space[5]};
-  border: 2px solid ${({ theme, $selected }) =>
-    $selected ? theme.report.color.selected : theme.report.color.border};
+  min-height: 36px;
+  padding: ${({ theme }) => theme.space[2]} ${({ theme }) => theme.space[4]};
+  border: 0;
   border-radius: ${({ theme }) => theme.radius.full};
-  background: ${({ theme, $selected }) =>
-    $selected ? theme.report.color.selected : theme.report.color.surface};
+  background: ${({ $selected }) =>
+    $selected ? '#f7b6d4' : '#f4eef1'};
   color: ${({ theme, $selected }) =>
     $selected ? theme.report.color.selectedText : theme.report.color.body};
-  font-size: ${({ theme }) => theme.report.font.body};
+  font-size: 14px;
   line-height: ${({ theme }) => theme.report.font.lineHeight};
   font-weight: ${({ $selected }) => ($selected ? 500 : 400)};
   white-space: nowrap;
@@ -33,11 +32,7 @@ const Chip = styled.button`
     outline-offset: 3px;
   }
 
-  @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
-    min-height: ${({ theme }) => theme.report.layout.mobileFilterHeight};
-    padding-inline: ${({ theme }) => theme.space[3]};
-    font-size: ${({ theme }) => theme.report.font.mobileBody};
-  }
+  @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) { padding-inline: ${({ theme }) => theme.space[3]}; }
 `
 
 export default function FilterChip({ children, selected = false, onClick }) {
