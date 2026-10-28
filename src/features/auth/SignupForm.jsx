@@ -1,13 +1,20 @@
 import TextField from '../../components/TextField.jsx'
 import AuthLayout from './AuthLayout.jsx'
-import { PASSWORD_RULE, validateSignup } from './authValidation.js'
-import useForm from '../../hooks/useForm.js'
+import { signUp } from './authApi.js'
+import { LOGIN_ID_RULE, PASSWORD_RULE, signupErrorsFrom, validateSignup } from './authValidation.js'
+import useAuthForm from './useAuthForm.js'
 
 export default function SignupForm({ onSignup, onLoginClick }) {
-  const { values, errors, handleChange, handleSubmit } = useForm(
+  const { values, errors, submitting, handleChange, handleSubmit } = useAuthForm(
     { email: '', loginId: '', name: '', password: '', passwordConfirm: '' },
     validateSignup,
-    onSignup,
+    async (form) => {
+      try {
+        onSignup(await signUp(form))
+      } catch (error) {
+        return signupErrorsFrom(error)
+      }
+    },
   )
 
   return (
@@ -15,6 +22,8 @@ export default function SignupForm({ onSignup, onLoginClick }) {
       title="회원가입"
       description="학교 이메일(@dsm.hs.kr)로만 가입할 수 있어요."
       submitLabel="가입하기"
+      submitting={submitting}
+      formError={errors.form}
       footerText="이미 계정이 있나요?"
       footerActionLabel="로그인"
       onFooterAction={onLoginClick}
@@ -37,8 +46,10 @@ export default function SignupForm({ onSignup, onLoginClick }) {
         label="아이디"
         placeholder="아이디를 입력하세요"
         autoComplete="username"
+        maxLength={20}
         value={values.loginId}
         onChange={handleChange}
+        helper={LOGIN_ID_RULE}
         error={errors.loginId}
       />
       <TextField

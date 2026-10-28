@@ -12,10 +12,12 @@ const filters = [
 
 const Panel = styled.section`
   width: 100%;
-  max-width: ${({ theme }) => theme.report.layout.panelWidth};
-  padding: ${({ theme }) => theme.report.layout.panelPadding};
-  padding-bottom: ${({ theme }) => theme.report.layout.panelBottom};
-  border-radius: ${({ theme }) => theme.report.radius.panel};
+  max-width: 420px;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: ${({ theme }) => theme.space[6]};
+  border-radius: 28px;
   background: ${({ theme }) => theme.report.color.surface};
 
   @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
@@ -25,14 +27,14 @@ const Panel = styled.section`
   }
 `
 
-const Heading = styled.h1`
+const Heading = styled.h2`
   display: flex;
   align-items: baseline;
   gap: ${({ theme }) => theme.space[2]};
-  margin: 0 0 ${({ theme }) => theme.space[6]};
+  margin: 0 0 ${({ theme }) => theme.space[4]};
   color: ${({ theme }) => theme.report.color.title};
-  font-size: ${({ theme }) => theme.report.font.heading};
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 500;
   line-height: ${({ theme }) => theme.report.font.lineHeight};
 `
 
@@ -44,8 +46,8 @@ const Count = styled.span`
 const Filters = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: ${({ theme }) => theme.space[3]};
-  margin-bottom: ${({ theme }) => theme.space[6]};
+  gap: ${({ theme }) => theme.space[2]};
+  margin-bottom: ${({ theme }) => theme.space[4]};
 
   @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
     gap: ${({ theme }) => theme.space[2]};
@@ -54,7 +56,7 @@ const Filters = styled.div`
 
 const List = styled.ul`
   display: grid;
-  gap: ${({ theme }) => theme.report.layout.listGap};
+  gap: ${({ theme }) => theme.space[3]};
   margin: 0;
   padding: 0;
   list-style: none;
@@ -97,7 +99,7 @@ export default function ReportList({ reports, selectedStatus = 'all', onStatusCh
           <li key={report.id}>
             <ReportCard
               {...report}
-              onOpen={() => onSelectReport(report)}
+              onOpen={() => onSelectReport?.(report)}
               buttonRef={report.id === focusReportId ? focusedReportRef : undefined}
             />
           </li>

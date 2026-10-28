@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import styled from 'styled-components'
+import { fetchMe } from './features/auth/authApi.js'
 import LoginForm from './features/auth/LoginForm.jsx'
 import SignupForm from './features/auth/SignupForm.jsx'
 import ReportList from './features/reports/ReportList.jsx'
@@ -26,9 +27,20 @@ const Page = styled.main`
 `
 
 export default function App() {
-  const [view, setView] = useState('login')
+  // null은 세션으로 로그인 상태를 확인하는 중이다.
+  const [view, setView] = useState(null)
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedReport, setSelectedReport] = useState(null)
+
+  useEffect(() => {
+    let ignore = false
+    fetchMe()
+      .then(() => !ignore && setView('overview'))
+      .catch(() => !ignore && setView('login'))
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   if (['/managers', '/managers/'].includes(window.location.pathname)) {
     return <ManagerInfoPage managers={managerPreviewData} />
@@ -43,7 +55,9 @@ export default function App() {
     setView('detail')
   }
 
-  // API 연동 전 미리보기: 입력 검증을 통과하면 다음 화면으로 넘어간다.
+  if (view === null) return null
+
+  // 신고 화면은 아직 API 연동 전 미리보기 데이터를 쓴다.
   if (view === 'login') {
     return <LoginForm onLogin={() => setView('overview')} onSignupClick={() => setView('signup')} />
   }

@@ -1,14 +1,20 @@
 import TextField from '../../components/TextField.jsx'
 import AuthLayout from './AuthLayout.jsx'
-import { validateLogin } from './authValidation.js'
-import useForm from '../../hooks/useForm.js'
+import { login } from './authApi.js'
+import { loginErrorsFrom, validateLogin } from './authValidation.js'
+import useAuthForm from './useAuthForm.js'
 
-// failureMessage는 서버가 로그인을 거절했을 때 두 입력을 모두 오류로 표시하는 자리다.
-export default function LoginForm({ onLogin, onSignupClick, failureMessage }) {
-  const { values, errors, handleChange, handleSubmit } = useForm(
+export default function LoginForm({ onLogin, onSignupClick }) {
+  const { values, errors, submitting, handleChange, handleSubmit } = useAuthForm(
     { loginId: '', password: '' },
     validateLogin,
-    onLogin,
+    async (credentials) => {
+      try {
+        onLogin(await login(credentials))
+      } catch (error) {
+        return loginErrorsFrom(error)
+      }
+    },
   )
 
   return (
@@ -16,6 +22,8 @@ export default function LoginForm({ onLogin, onSignupClick, failureMessage }) {
       title="로그인"
       description="아이디와 비밀번호를 입력해 주세요."
       submitLabel="로그인"
+      submitting={submitting}
+      formError={errors.form}
       footerText="아직 계정이 없나요?"
       footerActionLabel="회원가입"
       onFooterAction={onSignupClick}
@@ -30,7 +38,7 @@ export default function LoginForm({ onLogin, onSignupClick, failureMessage }) {
         value={values.loginId}
         onChange={handleChange}
         error={errors.loginId}
-        invalid={Boolean(failureMessage)}
+        invalid={Boolean(errors.loginId || errors.failure)}
       />
       <TextField
         id="login-password"
@@ -41,7 +49,7 @@ export default function LoginForm({ onLogin, onSignupClick, failureMessage }) {
         autoComplete="current-password"
         value={values.password}
         onChange={handleChange}
-        error={errors.password || failureMessage}
+        error={errors.password || errors.failure}
       />
     </AuthLayout>
   )
