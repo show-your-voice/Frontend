@@ -28,6 +28,8 @@ const Page = styled.main`
 const Header = styled.header`
   display: flex;
   align-items: center;
+  width: 100%;
+  max-width: ${({ theme }) => theme.reportForm.layout.width};
   gap: ${({ theme }) => theme.space[3]};
 `
 
