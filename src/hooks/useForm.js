@@ -20,7 +20,8 @@ export default function useForm(initialValues, validate, onValid) {
 
     const firstInvalid = Object.keys(initialValues).find((name) => nextErrors[name])
     if (firstInvalid) {
-      event.currentTarget.elements[firstInvalid].focus()
+      const field = event.currentTarget.elements[firstInvalid]
+      ;(field instanceof RadioNodeList ? field[0] : field)?.focus()
       return
     }
     onValid?.(values)
