@@ -4,11 +4,11 @@ import AuthBrandPanel from './AuthBrandPanel.jsx'
 
 const Page = styled.main`
   display: grid;
-  grid-template-columns: ${({ theme }) => theme.auth.layout.columnWidth} minmax(0, ${({ theme }) => theme.auth.layout.columnWidth});
+  grid-template-columns: auto minmax(0, ${({ theme }) => theme.auth.layout.columnWidth});
   align-items: center;
   justify-content: center;
   min-height: 100dvh;
-  padding: 44px 0 32px;
+  padding: ${({ theme }) => theme.auth.layout.pageGutter} 0;
   background: ${({ theme }) => theme.auth.color.background};
   font-family: ${({ theme }) => theme.auth.font.family};
   line-height: ${({ theme }) => theme.auth.font.lineHeight};
