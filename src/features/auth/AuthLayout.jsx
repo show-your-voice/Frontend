@@ -1,4 +1,5 @@
 import styled from 'styled-components'
+import alertIcon from '../../assets/icons/alert.svg'
 import Button from '../../components/Button.jsx'
 import AuthBrandPanel from './AuthBrandPanel.jsx'
 
@@ -73,6 +74,21 @@ const Description = styled.p`
   word-break: keep-all;
 `
 
+const FormError = styled.p`
+  display: flex;
+  align-items: flex-start;
+  gap: ${({ theme }) => theme.space[1]};
+  margin: 0;
+  color: ${({ theme }) => theme.auth.color.error};
+  font-size: ${({ theme }) => theme.auth.font.caption};
+  word-break: keep-all;
+
+  img {
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+`
+
 const Footer = styled.p`
   display: flex;
   flex-wrap: wrap;
@@ -88,6 +104,8 @@ export default function AuthLayout({
   title,
   description,
   submitLabel,
+  submitting = false,
+  formError,
   footerText,
   footerActionLabel,
   onFooterAction,
@@ -106,7 +124,13 @@ export default function AuthLayout({
             <Description>{description}</Description>
           </Heading>
           {children}
-          <Button type="submit">{submitLabel}</Button>
+          {formError && (
+            <FormError role="alert">
+              <img src={alertIcon} width="16" height="16" alt="" />
+              {formError}
+            </FormError>
+          )}
+          <Button type="submit" disabled={submitting} aria-busy={submitting}>{submitLabel}</Button>
           <Footer>
             {footerText}
             <Button variant="text" onClick={onFooterAction}>{footerActionLabel}</Button>
