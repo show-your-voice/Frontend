@@ -24,6 +24,7 @@ const multiline = css`
 `
 
 const Input = styled.input`
+  display: block;
   width: 100%;
   height: ${({ theme }) => theme.auth.layout.fieldHeight};
   padding: 0 ${({ theme }) => theme.space[4]};
@@ -48,6 +49,10 @@ const Input = styled.input`
   ${({ $multiline }) => $multiline && multiline}
 `
 
+const Control = styled.div`
+  position: relative;
+`
+
 const Helper = styled.p`
   display: flex;
   align-items: flex-start;
@@ -65,22 +70,34 @@ const Helper = styled.p`
 `
 
 // invalid는 메시지 없이 오류 테두리만 보여야 할 때 쓴다.
-export default function TextField({ id, label, helper, error, invalid = Boolean(error), multiline = false, ...inputProps }) {
+export default function TextField({
+  id,
+  label,
+  helper,
+  error,
+  invalid = Boolean(error),
+  multiline = false,
+  children,
+  ...inputProps
+}) {
   const message = error || helper
   const messageId = message ? `${id}-message` : undefined
 
   return (
     <Field>
       <Label htmlFor={id}>{label}</Label>
-      <Input
-        as={multiline ? 'textarea' : 'input'}
-        id={id}
-        $invalid={invalid}
-        $multiline={multiline}
-        aria-invalid={invalid || undefined}
-        aria-describedby={messageId}
-        {...inputProps}
-      />
+      <Control>
+        <Input
+          as={multiline ? 'textarea' : 'input'}
+          id={id}
+          $invalid={invalid}
+          $multiline={multiline}
+          aria-invalid={invalid || undefined}
+          aria-describedby={messageId}
+          {...inputProps}
+        />
+        {children}
+      </Control>
       {message && (
         <Helper id={messageId} $invalid={Boolean(error)}>
           {error && <img src={alertIcon} width="16" height="16" alt="" />}
