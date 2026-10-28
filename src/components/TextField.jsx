@@ -1,4 +1,4 @@
-import styled from 'styled-components'
+import styled, { css } from 'styled-components'
 import alertIcon from '../assets/icons/alert.svg'
 
 const Field = styled.div`
@@ -12,6 +12,15 @@ const Label = styled.label`
   color: ${({ theme }) => theme.auth.color.textPrimary};
   font-size: ${({ theme }) => theme.auth.font.label};
   font-weight: 500;
+`
+
+const multiline = css`
+  height: ${({ theme }) => theme.reportForm.layout.textareaHeight};
+  padding: ${({ theme }) => theme.reportForm.layout.textareaPaddingTop} ${({ theme }) => theme.space[4]};
+  border-width: 1.5px;
+  border-radius: ${({ theme }) => theme.radius.md};
+  line-height: ${({ theme }) => theme.auth.font.lineHeight};
+  resize: vertical;
 `
 
 const Input = styled.input`
@@ -35,6 +44,8 @@ const Input = styled.input`
   &:focus {
     border-color: ${({ theme, $invalid }) => $invalid ? theme.auth.color.error : theme.auth.color.brand};
   }
+
+  ${({ $multiline }) => $multiline && multiline}
 `
 
 const Helper = styled.p`
@@ -54,7 +65,7 @@ const Helper = styled.p`
 `
 
 // invalid는 메시지 없이 오류 테두리만 보여야 할 때 쓴다.
-export default function TextField({ id, label, helper, error, invalid = Boolean(error), ...inputProps }) {
+export default function TextField({ id, label, helper, error, invalid = Boolean(error), multiline = false, ...inputProps }) {
   const message = error || helper
   const messageId = message ? `${id}-message` : undefined
 
@@ -62,8 +73,10 @@ export default function TextField({ id, label, helper, error, invalid = Boolean(
     <Field>
       <Label htmlFor={id}>{label}</Label>
       <Input
+        as={multiline ? 'textarea' : 'input'}
         id={id}
         $invalid={invalid}
+        $multiline={multiline}
         aria-invalid={invalid || undefined}
         aria-describedby={messageId}
         {...inputProps}
