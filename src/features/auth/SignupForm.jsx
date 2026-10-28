@@ -1,10 +1,10 @@
 import TextField from '../../components/TextField.jsx'
 import AuthLayout from './AuthLayout.jsx'
 import { PASSWORD_RULE, validateSignup } from './authValidation.js'
-import useAuthForm from './useAuthForm.js'
+import useForm from '../../hooks/useForm.js'
 
 export default function SignupForm({ onSignup, onLoginClick }) {
-  const { values, errors, handleChange, handleSubmit } = useAuthForm(
+  const { values, errors, handleChange, handleSubmit } = useForm(
     { email: '', loginId: '', name: '', password: '', passwordConfirm: '' },
     validateSignup,
     onSignup,

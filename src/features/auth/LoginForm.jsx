@@ -1,11 +1,11 @@
 import TextField from '../../components/TextField.jsx'
 import AuthLayout from './AuthLayout.jsx'
 import { validateLogin } from './authValidation.js'
-import useAuthForm from './useAuthForm.js'
+import useForm from '../../hooks/useForm.js'
 
 // failureMessage는 서버가 로그인을 거절했을 때 두 입력을 모두 오류로 표시하는 자리다.
 export default function LoginForm({ onLogin, onSignupClick, failureMessage }) {
-  const { values, errors, handleChange, handleSubmit } = useAuthForm(
+  const { values, errors, handleChange, handleSubmit } = useForm(
     { loginId: '', password: '' },
     validateLogin,
     onLogin,
