@@ -4,7 +4,9 @@ import TextField from '../../components/TextField.jsx'
 import useForm from '../../hooks/useForm.js'
 import ReportCategoryField from './ReportCategoryField.jsx'
 import ReportPhotoField from './ReportPhotoField.jsx'
+import ReportRoomField from './ReportRoomField.jsx'
 import { MAX_REPORT_PHOTOS, REPORT_CATEGORIES, validateReport } from './reportFormValidation.js'
+import { reportRoomPreviewData } from './reportRoomPreviewData.js'
 import useReportPhotos from './useReportPhotos.js'
 
 const Page = styled.main`
@@ -91,10 +93,10 @@ const Footer = styled.div`
   }
 `
 
-export default function ReportForm({ onSubmit, onCancel }) {
+export default function ReportForm({ rooms = reportRoomPreviewData, onSubmit, onCancel }) {
   const { photos, error: photoError, addPhotos, removePhoto } = useReportPhotos(MAX_REPORT_PHOTOS)
-  const { values, errors, handleChange, handleSubmit } = useForm(
-    { category: '', title: '', content: '', improvement: '' },
+  const { values, errors, setValue, handleChange, handleSubmit } = useForm(
+    { room: '', category: '', title: '', content: '', improvement: '' },
     validateReport,
     (report) => onSubmit?.({ ...report, photos: photos.map((photo) => photo.file) }),
   )
@@ -110,6 +112,14 @@ export default function ReportForm({ onSubmit, onCancel }) {
         <Title id="report-form-title">불편 신고하기</Title>
       </Header>
       <Card noValidate onSubmit={handleSubmit} aria-labelledby="report-form-title">
+        <ReportRoomField
+          id="report-room"
+          name="room"
+          rooms={rooms}
+          value={values.room}
+          error={errors.room}
+          onChange={(roomId) => setValue('room', roomId)}
+        />
         <ReportCategoryField
           name="category"
           categories={REPORT_CATEGORIES}
