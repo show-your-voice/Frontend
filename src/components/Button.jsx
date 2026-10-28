@@ -36,6 +36,11 @@ const StyledButton = styled.button`
     outline: 2px solid ${({ theme }) => theme.auth.color.brand};
     outline-offset: 3px;
   }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
 `
 
 export default function Button({ children, variant = 'primary', type = 'button', ...props }) {
