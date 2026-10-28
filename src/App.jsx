@@ -4,6 +4,8 @@ import ReportList from './features/reports/ReportList.jsx'
 import ReportOverview from './features/reports/ReportOverview.jsx'
 import ReportDetail from './features/reports/ReportDetail.jsx'
 import { reportDetailPreviewData, reportOverviewPreviewData, reportPreviewData } from './features/reports/reportPreviewData.js'
+import ManagerInfoPage from './features/managers/ManagerInfoPage.jsx'
+import { managerPreviewData } from './features/managers/managerPreviewData.js'
 
 const Page = styled.main`
   display: flex;
@@ -24,6 +26,10 @@ export default function App() {
   const [view, setView] = useState('overview')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedReport, setSelectedReport] = useState(null)
+
+  if (['/managers', '/managers/'].includes(window.location.pathname)) {
+    return <ManagerInfoPage managers={managerPreviewData} />
+  }
 
   function openReport(report) {
     setSelectedReport({ ...report, ...reportDetailPreviewData[report.id] })
