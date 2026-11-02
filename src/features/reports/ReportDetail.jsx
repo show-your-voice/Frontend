@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
 import OutlineButton from '../../components/OutlineButton.jsx'
 import StatusBadge from '../../components/StatusBadge.jsx'
 import ReportAttachments from './ReportAttachments.jsx'
+import ReportDeleteModal from './ReportDeleteModal.jsx'
 import ReportInfoList from './ReportInfoList.jsx'
 import ReportStatusTimeline from './ReportStatusTimeline.jsx'
 
@@ -109,7 +110,13 @@ const Actions = styled.div`
 
 export default function ReportDetail({ report, onBack, onDelete }) {
   const headingRef = useRef(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   useEffect(() => { headingRef.current?.focus() }, [report.id])
+
+  function confirmDelete() {
+    setIsDeleteModalOpen(false)
+    onDelete(report.id)
+  }
 
   return (
     <Panel aria-labelledby="report-detail-heading">
@@ -143,8 +150,11 @@ export default function ReportDetail({ report, onBack, onDelete }) {
         )}
       </Content>
       <Actions>
-        <OutlineButton danger large tonal disabled={!onDelete} onClick={onDelete}>게시물 삭제</OutlineButton>
+        <OutlineButton danger large tonal disabled={!onDelete} onClick={() => setIsDeleteModalOpen(true)}>게시물 삭제</OutlineButton>
       </Actions>
+      {isDeleteModalOpen && (
+        <ReportDeleteModal onCancel={() => setIsDeleteModalOpen(false)} onConfirm={confirmDelete} />
+      )}
     </Panel>
   )
 }

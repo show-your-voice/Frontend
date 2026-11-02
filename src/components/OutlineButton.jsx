@@ -15,7 +15,7 @@ const Button = styled.button`
   color: ${({ theme, $danger }) =>
     $danger ? theme.report.color.danger : theme.report.color.accent};
   font-size: ${({ theme, $large }) =>
-    $large ? theme.report.font.title : theme.report.font.mobileBody};
+    $large ? theme.report.font.small : theme.report.font.mobileBody};
   line-height: ${({ theme }) => theme.report.font.lineHeight};
   cursor: pointer;
 
