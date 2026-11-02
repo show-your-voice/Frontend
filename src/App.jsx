@@ -31,6 +31,7 @@ export default function App() {
   const [view, setView] = useState(null)
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedReport, setSelectedReport] = useState(null)
+  const [reports, setReports] = useState(reportPreviewData)
 
   useEffect(() => {
     let ignore = false
@@ -55,6 +56,12 @@ export default function App() {
     setView('detail')
   }
 
+  function deleteReport(reportId) {
+    setReports((currentReports) => currentReports.filter((report) => report.id !== reportId))
+    setSelectedReport(null)
+    setView('list')
+  }
+
   if (view === null) return null
 
   // 신고 화면은 아직 API 연동 전 미리보기 데이터를 쓴다.
@@ -76,7 +83,7 @@ export default function App() {
       )}
       {view === 'list' && (
         <ReportList
-          reports={reportPreviewData}
+          reports={reports}
           selectedStatus={selectedStatus}
           onStatusChange={setSelectedStatus}
           onSelectReport={openReport}
@@ -84,7 +91,7 @@ export default function App() {
         />
       )}
       {view === 'detail' && (
-        <ReportDetail report={selectedReport} onBack={() => setView('list')} />
+        <ReportDetail key={selectedReport.id} report={selectedReport} onBack={() => setView('list')} onDelete={deleteReport} />
       )}
     </Page>
   )
