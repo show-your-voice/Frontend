@@ -32,6 +32,13 @@ Frontend foundation for Show Your Voice, built with Vite, React, JavaScript, and
 - styled-components
 - ESLint
 
+## 불편 신고 작성 미리보기
+
+개발 서버에서 `/reports/new`를 열면 사진 첨부를 포함한 불편 신고 작성 화면을
+확인할 수 있습니다. `ReportForm`은 `rooms`(실 검색 목록, 기본값은 예시 데이터)를 받고,
+검증을 통과하면 `onSubmit`으로 선택한 실 id를 포함한 입력값과 첨부 사진 `File` 배열을
+넘깁니다. 실제 업로드·등록 API와는 아직 연결하지 않았습니다.
+
 ## 작업 흐름
 
 모든 작업은 **이슈 → 해당 이슈의 작업 브랜치 → 구현·검증 → PR** 순서로 진행합니다.

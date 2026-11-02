@@ -1,13 +1,22 @@
 import styled, { css } from 'styled-components'
 
-const primary = css`
-  width: 100%;
+const large = css`
   min-width: 120px;
   min-height: ${({ theme }) => theme.auth.layout.buttonHeight};
   padding: 0 28px;
+  font-size: ${({ theme }) => theme.auth.font.body};
+`
+
+const primary = css`
+  ${large}
   background: ${({ theme }) => theme.auth.color.brand};
   color: ${({ theme }) => theme.auth.color.onBrand};
-  font-size: ${({ theme }) => theme.auth.font.body};
+`
+
+const neutral = css`
+  ${large}
+  background: ${({ theme }) => theme.auth.color.neutral};
+  color: ${({ theme }) => theme.auth.color.textPrimary};
 `
 
 const text = css`
@@ -18,11 +27,14 @@ const text = css`
   font-size: ${({ theme }) => theme.auth.font.label};
 `
 
+const variants = { primary, neutral, text }
+
 const StyledButton = styled.button`
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  width: ${({ $fullWidth }) => $fullWidth ? '100%' : 'auto'};
   border: 0;
   border-radius: ${({ theme }) => theme.radius.full};
   font-weight: 500;
@@ -30,7 +42,7 @@ const StyledButton = styled.button`
   letter-spacing: inherit;
   white-space: nowrap;
   cursor: pointer;
-  ${({ $variant }) => $variant === 'text' ? text : primary}
+  ${({ $variant }) => variants[$variant] ?? primary}
 
   &:focus-visible {
     outline: 2px solid ${({ theme }) => theme.auth.color.brand};
@@ -43,9 +55,15 @@ const StyledButton = styled.button`
   }
 `
 
-export default function Button({ children, variant = 'primary', type = 'button', ...props }) {
+export default function Button({
+  children,
+  variant = 'primary',
+  fullWidth = variant === 'primary',
+  type = 'button',
+  ...props
+}) {
   return (
-    <StyledButton type={type} $variant={variant} {...props}>
+    <StyledButton type={type} $variant={variant} $fullWidth={fullWidth} {...props}>
       {children}
     </StyledButton>
   )
