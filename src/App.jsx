@@ -7,6 +7,7 @@ import SignupForm from './features/auth/SignupForm.jsx'
 import ManagerInfoPage from './features/managers/ManagerInfoPage.jsx'
 import { managerPreviewData } from './features/managers/managerPreviewData.js'
 import FloorPlan from './features/school-map/FloorPlan.jsx'
+import PlaceActionModal from './features/school-map/PlaceActionModal.jsx'
 import { schoolMapPreviewData, splitPlacesByDisplayType } from './features/school-map/schoolMapPreviewData.js'
 import ReportDetail from './features/reports/ReportDetail.jsx'
 import ReportForm from './features/reports/ReportForm.jsx'
@@ -137,6 +138,8 @@ function pinLevel(count) {
 }
 
 function SchoolMapPage({ places = schoolMapPreviewData.places, rooms = schoolMapPreviewData.rooms, reports = mapReportPreviewData }) {
+  const navigate = useNavigate()
+  const [actionRoom, setActionRoom] = useState(null)
   const { floorPlaces, quickPlaces } = useMemo(() => splitPlacesByDisplayType(places), [places])
   const roomsById = useMemo(() => new Map(rooms.map((room) => [room.id, room])), [rooms])
   const placesById = useMemo(() => new Map(places.map((place) => [place.id, place])), [places])
@@ -185,9 +188,10 @@ function SchoolMapPage({ places = schoolMapPreviewData.places, rooms = schoolMap
   return (
     <SchoolMapLayout>
       <SchoolMapContent>
-        <FloorPlan floorPlaces={floorPlaces} quickPlaces={quickPlaces} pins={pins} selectedPlaceId={selectedPlaceId} selectedPinId={selectedPinId} onPlaceChange={changePlace} onPinSelect={selectPin} />
+        <FloorPlan floorPlaces={floorPlaces} quickPlaces={quickPlaces} pins={pins} selectedPlaceId={selectedPlaceId} selectedPinId={selectedPinId} onPlaceChange={changePlace} onPinSelect={selectPin} onRoomSelect={setActionRoom} />
         <ReportList reports={placeReports} selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
       </SchoolMapContent>
+      {actionRoom && <PlaceActionModal roomName={actionRoom} onClose={() => setActionRoom(null)} onReport={() => navigate('/reports/new')} />}
     </SchoolMapLayout>
   )
 }

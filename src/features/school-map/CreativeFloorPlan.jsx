@@ -22,13 +22,19 @@ const Wing = styled.div`
   border-left: 2px solid #363b42;
 `
 
-const Room = styled.div`
+const Room = styled.button`
   display: grid;
   min-width: 0;
   padding: 6px;
   place-items: center;
   border-right: 2px solid #363b42;
   border-bottom: 2px solid #363b42;
+  border-top: 0;
+  border-left: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
   font-size: clamp(10px, 1.3vw, 18px);
   font-weight: 500;
   line-height: 1.35;
@@ -53,7 +59,7 @@ const Title = styled.h2`
 function RoomRow({ rooms, width, align }) {
   return (
     <Wing $columns={rooms.length} $width={width} $align={align}>
-      {rooms.map((room) => <Room key={room}>{room}</Room>)}
+      {rooms.map((room) => <Room key={room} type="button" data-room-name={room}>{room}</Room>)}
     </Wing>
   )
 }

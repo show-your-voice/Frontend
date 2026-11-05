@@ -132,10 +132,22 @@ function getCreativeFloor(placeName) {
   return Number(/^창의관\s*(\d+)\s*층$/.exec(placeName ?? '')?.[1])
 }
 
-export default function FloorPlan({ floorPlaces, quickPlaces, pins, selectedPlaceId, selectedPinId, onPlaceChange, onPinSelect }) {
+export default function FloorPlan({ floorPlaces, quickPlaces, pins, selectedPlaceId, selectedPinId, onPlaceChange, onPinSelect, onRoomSelect }) {
   const places = [...floorPlaces, ...quickPlaces]
   const selectedPlace = places.find((place) => place.id === selectedPlaceId) ?? places[0]
   const Map = creativeFloorPlans[getCreativeFloor(selectedPlace?.name)]
+
+  function selectRoom(event) {
+    const room = event.target.closest('[data-room-name]')
+    onPinSelect?.(null)
+    if (room) onRoomSelect?.(room.dataset.roomName)
+  }
+
+  function selectRoomByKeyboard(event) {
+    if (event.target.tagName.toLowerCase() !== 'g' || !['Enter', ' '].includes(event.key)) return
+    event.preventDefault()
+    selectRoom(event)
+  }
 
   return (
     <MapArea>
@@ -144,7 +156,7 @@ export default function FloorPlan({ floorPlaces, quickPlaces, pins, selectedPlac
         <PlaceDropdown places={floorPlaces} selectedPlaceId={selectedPlaceId} onSelect={onPlaceChange} />
         {quickPlaces.map((place) => <Chip key={place.id} type="button" aria-pressed={place.id === selectedPlaceId} onClick={() => onPlaceChange(place.id)}>{place.name}</Chip>)}
       </MapHeader>
-      <PlanFrame aria-label={`${selectedPlace?.name ?? '선택한 장소'} 평면도`} onClick={() => onPinSelect?.(null)}>
+      <PlanFrame aria-label={`${selectedPlace?.name ?? '선택한 장소'} 평면도`} onClick={selectRoom} onKeyDown={selectRoomByKeyboard}>
         {Map ? <Map /> : selectedPlace?.image_url ? <img src={selectedPlace.image_url} alt={`${selectedPlace.name} 평면도`} /> : <Blueprint aria-hidden="true"><span>{selectedPlace?.name} 평면도</span></Blueprint>}
         {pins.map((pin) => {
           return <Pin key={pin.id} type="button" aria-label={`미해결 신고 ${pin.count}건`} aria-pressed={selectedPinId === pin.id} $level={pin.level} $size={pinSize(pin.level)} style={{ left: `${pin.x}%`, top: `${pin.y}%` }} onClick={(event) => { event.stopPropagation(); onPinSelect?.(pin.id) }}>{pin.count}</Pin>

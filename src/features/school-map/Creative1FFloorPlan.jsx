@@ -33,8 +33,8 @@ export default function Creative1FFloorPlan() {
         <path d="M206 497H743M206 574H743M743 574V803M855 629V803M1647 629V803" />
         <rect x="150" y="437" width="39" height="253" />
         {rooms.map(([x,y,width,height,label]) => (
-          <g key={`${x}:${y}`}>
-            <rect x={x} y={y} width={width} height={height} />
+          <g key={`${x}:${y}`} data-room-name={label.replaceAll('\n', '')} role="button" tabIndex={0} aria-label={label.replaceAll('\n', '')} style={{ cursor: 'pointer' }}>
+            <rect x={x} y={y} width={width} height={height} fill="transparent" />
             <Label x={x + width / 2} y={y + height / 2 + 9} lines={label} width={width} size={label === '승강기' ? 22 : 27} />
           </g>
         ))}
