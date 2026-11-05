@@ -52,7 +52,7 @@ const Description = styled.p`
   }
 `
 
-export default function Modal({ title, description, onClose, children }) {
+export default function Modal({ title, description, onClose, children, className }) {
   const dialogRef = useRef(null)
   const titleId = useId()
   const descriptionId = useId()
@@ -100,7 +100,7 @@ export default function Modal({ title, description, onClose, children }) {
   }
 
   return createPortal(
-    <Dialog ref={dialogRef} aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined} onCancel={cancel} onKeyDown={keepFocus}>
+    <Dialog className={className} ref={dialogRef} aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined} onCancel={cancel} onKeyDown={keepFocus}>
       <Title id={titleId}>{title}</Title>
       {description && <Description id={descriptionId}>{description}</Description>}
       {children}

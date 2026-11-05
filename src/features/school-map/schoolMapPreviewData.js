@@ -1,4 +1,4 @@
-import creativeBuilding1F from '../../assets/floor-plans/creative-building-1f.png'
+import creativeBuilding1F from '../../assets/creative-building-1f.png'
 
 export const creativeBuildingFloorPattern = /^창의관\s*\d+\s*층$/
 
@@ -10,7 +10,7 @@ export function splitPlacesByDisplayType(places) {
   }, { floorPlaces: [], quickPlaces: [] })
 }
 
-export const floorPlanPreviewData = {
+export const schoolMapPreviewData = {
   places: [
     { id: 1, name: '창의관 1층', image_url: creativeBuilding1F },
     { id: 2, name: '창의관 2층', image_url: null },

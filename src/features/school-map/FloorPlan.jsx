@@ -1,6 +1,10 @@
-import { useMemo } from 'react'
 import styled from 'styled-components'
 import PlaceDropdown from './PlaceDropdown.jsx'
+import Creative1FFloorPlan from './Creative1FFloorPlan.jsx'
+import Creative2FFloorPlan from './Creative2FFloorPlan.jsx'
+import Creative3FFloorPlan from './Creative3FFloorPlan.jsx'
+import Creative4FFloorPlan from './Creative4FFloorPlan.jsx'
+import Creative5FFloorPlan from './Creative5FFloorPlan.jsx'
 
 const MapArea = styled.section`
   display: flex;
@@ -76,7 +80,7 @@ const Pin = styled.button`
   width: ${({ $size }) => $size}px;
   height: ${({ $size }) => $size}px;
   place-items: center;
-  border: 3px solid #fff;
+  border: none;
   border-radius: 50%;
   background: ${({ $level }) => $level === 'high' ? '#fa44a8' : $level === 'mid' ? '#f57ab7' : '#f7b6d4'};
   color: ${({ $level }) => $level === 'low' ? '#a3165f' : '#fff'};
@@ -84,56 +88,66 @@ const Pin = styled.button`
   font-weight: 700;
   cursor: pointer;
 
-  ${({ $level }) => $level === 'high' && 'box-shadow: 0 0 0 8px rgba(250, 68, 168, .16);'}
+  &[aria-pressed='true'] { box-shadow: 0 0 0 6px rgba(250, 68, 168, .2); }
   &:focus-visible { outline: 2px solid #b32e75; outline-offset: 3px; }
 `
 
 const Legend = styled.p`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   margin: 16px 0 0;
   color: #615c5f;
   font-size: 13px;
-  span { margin-right: 14px; color: #474446; }
+`
+
+const LegendItem = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #474446;
+
+  &::before {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: ${({ $level }) => $level === 'high' ? '#fa44a8' : $level === 'mid' ? '#f57ab7' : '#f7b6d4'};
+    content: '';
+  }
 `
 
 function pinSize(level) {
   return level === 'high' ? 48 : level === 'mid' ? 40 : 32
 }
 
-function isUnresolved(report) {
-  const status = typeof report.status === 'string' ? report.status : report.status?.tone
-  return ['UNRESOLVED', 'IN_PROGRESS', 'received', 'inProgress'].includes(status)
+const creativeFloorPlans = {
+  1: Creative1FFloorPlan,
+  2: Creative2FFloorPlan,
+  3: Creative3FFloorPlan,
+  4: Creative4FFloorPlan,
+  5: Creative5FFloorPlan,
 }
 
-function toPercent(value) {
-  const coordinate = Number(value)
-  if (!Number.isFinite(coordinate)) return null
-  return coordinate >= 0 && coordinate <= 1 ? coordinate * 100 : coordinate
+function getCreativeFloor(placeName) {
+  return Number(/^창의관\s*(\d+)\s*층$/.exec(placeName ?? '')?.[1])
 }
 
-function pinLevel(count) {
-  return count >= 5 ? 'high' : count >= 3 ? 'mid' : 'low'
-}
-
-export default function FloorPlanViewer({ floorPlaces, quickPlaces, reports, selectedPlaceId, selectedPinId, onPlaceChange, onPinSelect }) {
+export default function FloorPlan({ floorPlaces, quickPlaces, pins, selectedPlaceId, selectedPinId, onPlaceChange, onPinSelect, onRoomSelect }) {
   const places = [...floorPlaces, ...quickPlaces]
   const selectedPlace = places.find((place) => place.id === selectedPlaceId) ?? places[0]
-  const pins = useMemo(() => {
-    const groupedReports = new Map()
+  const Map = creativeFloorPlans[getCreativeFloor(selectedPlace?.name)]
 
-    reports
-      .filter(isUnresolved)
-      .forEach((report) => {
-        const x = toPercent(report.pos_x)
-        const y = toPercent(report.pos_y)
-        if (x === null || y === null) return
+  function selectRoom(event) {
+    const room = event.target.closest('[data-room-name]')
+    onPinSelect?.(null)
+    if (room) onRoomSelect?.(room.dataset.roomName)
+  }
 
-        const id = `${x.toFixed(4)}:${y.toFixed(4)}`
-        const group = groupedReports.get(id) ?? { id, x, y, count: 0 }
-        groupedReports.set(id, { ...group, count: group.count + 1 })
-      })
-
-    return [...groupedReports.values()]
-  }, [reports])
+  function selectRoomByKeyboard(event) {
+    if (event.target.tagName.toLowerCase() !== 'g' || !['Enter', ' '].includes(event.key)) return
+    event.preventDefault()
+    selectRoom(event)
+  }
 
   return (
     <MapArea>
@@ -142,14 +156,13 @@ export default function FloorPlanViewer({ floorPlaces, quickPlaces, reports, sel
         <PlaceDropdown places={floorPlaces} selectedPlaceId={selectedPlaceId} onSelect={onPlaceChange} />
         {quickPlaces.map((place) => <Chip key={place.id} type="button" aria-pressed={place.id === selectedPlaceId} onClick={() => onPlaceChange(place.id)}>{place.name}</Chip>)}
       </MapHeader>
-      <PlanFrame aria-label={`${selectedPlace?.name ?? '선택한 장소'} 평면도`} onClick={() => onPinSelect?.(null)}>
-        {selectedPlace?.image_url ? <img src={selectedPlace.image_url} alt={`${selectedPlace.name} 평면도`} /> : <Blueprint aria-hidden="true"><span>{selectedPlace?.name} 평면도</span></Blueprint>}
+      <PlanFrame aria-label={`${selectedPlace?.name ?? '선택한 장소'} 평면도`} onClick={selectRoom} onKeyDown={selectRoomByKeyboard}>
+        {Map ? <Map /> : selectedPlace?.image_url ? <img src={selectedPlace.image_url} alt={`${selectedPlace.name} 평면도`} /> : <Blueprint aria-hidden="true"><span>{selectedPlace?.name} 평면도</span></Blueprint>}
         {pins.map((pin) => {
-          const level = pinLevel(pin.count)
-          return <Pin key={pin.id} type="button" aria-label={`미해결 신고 ${pin.count}건`} aria-pressed={selectedPinId === pin.id} $level={level} $size={pinSize(level)} style={{ left: `${pin.x}%`, top: `${pin.y}%` }} onClick={(event) => { event.stopPropagation(); onPinSelect?.(pin.id) }}>{pin.count}</Pin>
+          return <Pin key={pin.id} type="button" aria-label={`미해결 신고 ${pin.count}건`} aria-pressed={selectedPinId === pin.id} $level={pin.level} $size={pinSize(pin.level)} style={{ left: `${pin.x}%`, top: `${pin.y}%` }} onClick={(event) => { event.stopPropagation(); onPinSelect?.(pin.id) }}>{pin.count}</Pin>
         })}
       </PlanFrame>
-      <Legend><span>● 1–2건</span><span>● 3–4건</span><span>● 5건 이상</span>핀 숫자 = 장소별 미해결 신고 수</Legend>
+      <Legend><LegendItem $level="low">1–2건</LegendItem><LegendItem $level="mid">3–4건</LegendItem><LegendItem $level="high">5건 이상</LegendItem>핀 숫자 = 해당 위치의 미해결 신고 수</Legend>
     </MapArea>
   )
 }

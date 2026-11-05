@@ -4,7 +4,7 @@ import PageIntro from '../../components/PageIntro.jsx'
 import ManagerTable from './ManagerTable.jsx'
 
 const Page = styled.main`
-  min-height: 100dvh;
+  min-height: calc(100dvh - 64px);
   padding: ${({ theme }) => theme.space[16]}
     ${({ theme }) => theme.manager.layout.pageInset}
     ${({ theme }) => theme.space[20]};
