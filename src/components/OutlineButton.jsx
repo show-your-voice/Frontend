@@ -13,7 +13,7 @@ const Button = styled.button`
   border-radius: ${({ theme }) => theme.radius.full};
   background: ${({ theme, $tonal }) => $tonal ? theme.report.color.dangerSurface : theme.report.color.surface};
   color: ${({ theme, $danger }) =>
-    $danger ? theme.report.color.danger : theme.report.color.accent};
+    $danger ? theme.report.color.danger : theme.report.color.focus};
   font-size: ${({ theme, $large }) =>
     $large ? theme.report.font.small : theme.report.font.mobileBody};
   line-height: ${({ theme }) => theme.report.font.lineHeight};
@@ -24,7 +24,9 @@ const Button = styled.button`
   }
 
   &:active:not(:disabled) {
-    background: ${({ theme }) => theme.report.color.selected};
+    background: ${({ theme, $danger }) =>
+      $danger ? theme.report.color.selected : theme.report.color.detailSurface};
+    text-decoration: ${({ $danger }) => $danger ? 'none' : 'underline'};
   }
 
   &:focus-visible {

@@ -121,9 +121,11 @@ export default function ReportCard({ title, description, date, author, location,
     <Card>
       <CardHeader>
         <Title title={title}>
-          <OpenButton ref={buttonRef} type="button" onClick={onOpen} aria-label={`${title} 상세 보기`}>
-            {title}
-          </OpenButton>
+          {onOpen ? (
+            <OpenButton ref={buttonRef} type="button" onClick={onOpen} aria-label={`${title} 상세 보기`}>
+              {title}
+            </OpenButton>
+          ) : title}
         </Title>
         <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
       </CardHeader>

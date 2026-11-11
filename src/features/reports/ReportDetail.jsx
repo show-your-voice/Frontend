@@ -37,7 +37,11 @@ const BackButton = styled.button`
   cursor: pointer;
 
   svg { width: ${({ theme }) => theme.report.overview.iconSize}; }
-  &:hover { color: ${({ theme }) => theme.report.color.accent}; }
+  &:hover { color: ${({ theme }) => theme.report.color.focus}; }
+  &:active {
+    color: ${({ theme }) => theme.report.color.focus};
+    text-decoration: underline;
+  }
   &:focus-visible {
     outline: 2px solid ${({ theme }) => theme.report.color.focus};
     outline-offset: 3px;
@@ -46,6 +50,7 @@ const BackButton = styled.button`
 
 const Heading = styled.h1`
   margin: ${({ theme }) => theme.space[4]} 0 ${({ theme }) => theme.space[8]};
+  outline: none;
   color: ${({ theme }) => theme.report.color.title};
   font-size: ${({ theme }) => theme.report.detail.titleSize};
   font-weight: 600;
@@ -89,7 +94,7 @@ const Improvement = styled.aside`
 
   h2 {
     margin: 0 0 ${({ theme }) => theme.space[1]};
-    color: ${({ theme }) => theme.report.color.accent};
+    color: ${({ theme }) => theme.report.color.focus};
     font-size: inherit;
     font-weight: 400;
   }
@@ -108,7 +113,7 @@ const Actions = styled.div`
   padding-top: ${({ theme }) => theme.space[8]};
 `
 
-export default function ReportDetail({ report, onBack, onDelete }) {
+export default function ReportDetail({ report, onBack, onDelete, onAddCoAssignee }) {
   const headingRef = useRef(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   useEffect(() => { headingRef.current?.focus() }, [report.id])
@@ -139,7 +144,7 @@ export default function ReportDetail({ report, onBack, onDelete }) {
         />
       </History>
       <Content>
-        <ReportInfoList {...report} author={report.authorDisplay ?? report.author} />
+        <ReportInfoList {...report} author={report.authorDisplay ?? report.author} onAddCoAssignee={onAddCoAssignee} />
         <ReportAttachments photos={report.photos} />
         <Description>{report.content ?? report.description}</Description>
         {report.improvement && (
@@ -149,9 +154,11 @@ export default function ReportDetail({ report, onBack, onDelete }) {
           </Improvement>
         )}
       </Content>
-      <Actions>
-        <OutlineButton danger large tonal disabled={!onDelete} onClick={() => setIsDeleteModalOpen(true)}>게시물 삭제</OutlineButton>
-      </Actions>
+      {onDelete && (
+        <Actions>
+          <OutlineButton danger large tonal onClick={() => setIsDeleteModalOpen(true)}>게시물 삭제</OutlineButton>
+        </Actions>
+      )}
       {isDeleteModalOpen && (
         <ReportDeleteModal onCancel={() => setIsDeleteModalOpen(false)} onConfirm={confirmDelete} />
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import styled from 'styled-components'
 import FilterChip from '../../components/FilterChip.jsx'
+import OutlineButton from '../../components/OutlineButton.jsx'
 import ReportCard from './ReportCard.jsx'
 
 const filters = [
@@ -66,10 +67,37 @@ const List = styled.ul`
   }
 `
 
-export default function ReportList({ reports, selectedStatus = 'all', onStatusChange, onSelectReport, focusReportId }) {
+const State = styled.div`
+  display: grid;
+  gap: ${({ theme }) => theme.space[4]};
+  padding: ${({ theme }) => theme.space[16]} ${({ theme }) => theme.space[4]};
+  color: ${({ theme }) => theme.report.color.muted};
+  text-align: center;
+`
+
+const StateMessage = styled.p`
+  margin: 0;
+  font-size: 14px;
+  line-height: ${({ theme }) => theme.report.font.lineHeight};
+`
+
+export default function ReportList({
+  reports,
+  title = '불편 신고',
+  selectedStatus = 'all',
+  onStatusChange,
+  onSelectReport,
+  focusReportId,
+  isLoading = false,
+  errorMessage,
+  onRetry,
+  emptyMessage = '등록된 신고가 없어요.',
+}) {
   const headingRef = useRef(null)
   const focusedReportRef = useRef(null)
   useEffect(() => {
+    if (focusReportId === undefined) return
+
     const target = focusedReportRef.current ?? headingRef.current
     target?.focus()
   }, [focusReportId])
@@ -77,34 +105,55 @@ export default function ReportList({ reports, selectedStatus = 'all', onStatusCh
   const visibleReports = selectedStatus === 'all'
     ? reports
     : reports.filter((report) => report.status.tone === selectedStatus)
+  const noReportsMessage = selectedStatus === 'all'
+    ? emptyMessage
+    : '선택한 상태의 신고가 없어요.'
 
   return (
     <Panel aria-labelledby="report-list-heading">
       <Heading id="report-list-heading" ref={headingRef} tabIndex={-1}>
-        불편 신고 <Count aria-live="polite">{visibleReports.length}</Count>
+        {title} <Count aria-live="polite">{visibleReports.length}</Count>
       </Heading>
       <Filters role="group" aria-label="처리 상태 필터">
         {filters.map((filter) => (
           <FilterChip
             key={filter.value}
             selected={selectedStatus === filter.value}
-            onClick={() => onStatusChange(filter.value)}
+            onClick={() => onStatusChange?.(filter.value)}
           >
             {filter.label}
           </FilterChip>
         ))}
       </Filters>
-      <List>
-        {visibleReports.map((report) => (
-          <li key={report.id}>
-            <ReportCard
-              {...report}
-              onOpen={() => onSelectReport?.(report)}
-              buttonRef={report.id === focusReportId ? focusedReportRef : undefined}
-            />
-          </li>
-        ))}
-      </List>
+      {isLoading && (
+        <State role="status" aria-live="polite">
+          <StateMessage>신고 목록을 불러오는 중이에요.</StateMessage>
+        </State>
+      )}
+      {!isLoading && errorMessage && (
+        <State role="alert">
+          <StateMessage>{errorMessage}</StateMessage>
+          {onRetry && <OutlineButton onClick={onRetry}>다시 시도</OutlineButton>}
+        </State>
+      )}
+      {!isLoading && !errorMessage && visibleReports.length === 0 && (
+        <State role="status">
+          <StateMessage>{noReportsMessage}</StateMessage>
+        </State>
+      )}
+      {!isLoading && !errorMessage && visibleReports.length > 0 && (
+        <List>
+          {visibleReports.map((report) => (
+            <li key={report.id}>
+              <ReportCard
+                {...report}
+                onOpen={onSelectReport ? () => onSelectReport(report) : undefined}
+                buttonRef={report.id === focusReportId ? focusedReportRef : undefined}
+              />
+            </li>
+          ))}
+        </List>
+      )}
     </Panel>
   )
 }

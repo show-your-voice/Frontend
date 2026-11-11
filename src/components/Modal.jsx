@@ -52,7 +52,7 @@ const Description = styled.p`
   }
 `
 
-export default function Modal({ title, description, onClose, children, className }) {
+export default function Modal({ title, description, onClose, children, className, initialFocusRef }) {
   const dialogRef = useRef(null)
   const titleId = useId()
   const descriptionId = useId()
@@ -64,13 +64,14 @@ export default function Modal({ title, description, onClose, children, className
 
     dialog.showModal()
     document.body.style.overflow = 'hidden'
+    initialFocusRef?.current?.focus({ preventScroll: true })
 
     return () => {
       dialog.close()
       document.body.style.overflow = previousOverflow
       if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true })
     }
-  }, [])
+  }, [initialFocusRef])
 
   function cancel(event) {
     event.preventDefault()

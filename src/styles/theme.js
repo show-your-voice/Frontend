@@ -134,6 +134,22 @@ export const theme = {
       actionMargin: '30px',
       buttonHeight: '66px',
     },
+    coAssignee: {
+      width: '720px',
+      padding: '46px 42px 42px',
+      closeSize: '44px',
+      titleSize: '28px',
+      descriptionSize: '20px',
+      labelSize: '18px',
+      resultSize: '20px',
+      mobileTextSize: '17px',
+      mobileSecondarySize: '15px',
+      searchHeight: '72px',
+      resultsMargin: '30px',
+      rowHeight: '88px',
+      actionHeight: '76px',
+      actionSize: '20px',
+    },
   },
   auth: {
     color: {

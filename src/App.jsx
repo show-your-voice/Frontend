@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Navigate, Outlet, RouterProvider, createBrowserRouter, useMatches, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import styled from 'styled-components'
 import Header from './components/Header.jsx'
@@ -12,6 +12,8 @@ import { schoolMapPreviewData, splitPlacesByDisplayType } from './features/schoo
 import ReportDetail from './features/reports/ReportDetail.jsx'
 import ReportForm from './features/reports/ReportForm.jsx'
 import ReportList from './features/reports/ReportList.jsx'
+import ManagerReportDetailPage from './features/reports/ManagerReportDetailPage.jsx'
+import { fetchAllReports } from './features/reports/reportApi.js'
 import { mapReportPreviewData, reportDetailPreviewData, reportPreviewData } from './features/reports/reportPreviewData.js'
 
 const ReportPage = styled.main`
@@ -35,6 +37,12 @@ const SchoolMapLayout = styled.main`
   background: #fdf1f6;
   color: #2e2c2d;
   font-family: ${({ theme }) => theme.report.font.family};
+
+  @media (max-width: 980px) {
+    height: auto;
+    min-height: calc(100dvh - 64px);
+    overflow: visible;
+  }
 `
 
 const SchoolMapContent = styled.div`
@@ -46,6 +54,14 @@ const SchoolMapContent = styled.div`
   overflow: hidden;
 
   @media (max-width: 980px) { height: auto; min-height: 100%; grid-template-columns: 1fr; overflow: visible; }
+`
+
+const PendingMapRegion = styled.div`
+  min-width: 0;
+
+  @media (max-width: 980px) {
+    display: none;
+  }
 `
 
 function LoginPage() {
@@ -71,7 +87,13 @@ function HeaderLayout() {
 
   return (
     <>
-      <Header brand="너목보" navigationLabel={header?.navigationLabel ?? '교내 지도'} userName="김학생" variant="user" />
+      <Header
+        brand="너목보"
+        navigationLabel={header?.navigationLabel ?? '교내 지도'}
+        userName={header?.userName ?? '김학생'}
+        userRole={header?.userRole}
+        variant={header?.variant ?? 'user'}
+      />
       <Outlet context={{ reports, deleteReport }} />
     </>
   )
@@ -196,6 +218,59 @@ function SchoolMapPage({ places = schoolMapPreviewData.places, rooms = schoolMap
   )
 }
 
+function ManagerReportsPage() {
+  const navigate = useNavigate()
+  const [reports, setReports] = useState([])
+  const [selectedStatus, setSelectedStatus] = useState('all')
+  const [requestVersion, setRequestVersion] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    let ignore = false
+
+    fetchAllReports()
+      .then((nextReports) => {
+        if (!ignore) setReports(nextReports)
+      })
+      .catch(() => {
+        if (!ignore) setErrorMessage('신고 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.')
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false)
+      })
+
+    return () => {
+      ignore = true
+    }
+  }, [requestVersion])
+
+  function retryReports() {
+    setIsLoading(true)
+    setErrorMessage('')
+    setRequestVersion((version) => version + 1)
+  }
+
+  return (
+    <SchoolMapLayout>
+      <SchoolMapContent>
+        <PendingMapRegion aria-hidden="true" />
+        <ReportList
+          reports={reports}
+          title="내 담당 신고"
+          selectedStatus={selectedStatus}
+          onStatusChange={setSelectedStatus}
+          onSelectReport={(report) => navigate(`/manager/reports/${report.id}`)}
+          isLoading={isLoading}
+          errorMessage={errorMessage}
+          onRetry={retryReports}
+          emptyMessage="조회된 신고가 없어요."
+        />
+      </SchoolMapContent>
+    </SchoolMapLayout>
+  )
+}
+
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignupPage /> },
@@ -205,6 +280,16 @@ const router = createBrowserRouter([
       { path: '/reports/:reportId', element: <ReportDetailPage />, handle: { header: { navigationLabel: '불편 신고' } } },
       { path: '/reports/new', element: <ReportCreatePage />, handle: { header: { navigationLabel: '신고 작성' } } },
       { index: true, element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
+      {
+        path: '/manager/reports',
+        element: <ManagerReportsPage />,
+        handle: { header: { navigationLabel: '교내 지도', userName: '이선생', userRole: '관리자', variant: 'admin' } },
+      },
+      {
+        path: '/manager/reports/:reportId',
+        element: <ManagerReportDetailPage />,
+        handle: { header: { navigationLabel: '교내 지도', userName: '이선생', userRole: '관리자', variant: 'admin' } },
+      },
       { path: '/managers', element: <ManagerInfoPage managers={managerPreviewData} />, handle: { header: { navigationLabel: '담당자 정보' } } },
     ],
   },
