@@ -1,16 +1,15 @@
 import styled from 'styled-components'
 import PlaceDropdown from './PlaceDropdown.jsx'
-import Creative1FFloorPlan from './Creative1FFloorPlan.jsx'
-import Creative2FFloorPlan from './Creative2FFloorPlan.jsx'
-import Creative3FFloorPlan from './Creative3FFloorPlan.jsx'
-import Creative4FFloorPlan from './Creative4FFloorPlan.jsx'
-import Creative5FFloorPlan from './Creative5FFloorPlan.jsx'
+import CreativeFloorPlan from './CreativeFloorPlan.jsx'
+import { floorPlanRooms } from './floorPlanRooms.js'
+import { buildingFloorPattern } from './schoolMapPreviewData.js'
 
 const MapArea = styled.section`
   display: flex;
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  padding: ${({ $hasFloorPlan }) => $hasFloorPlan ? '10px' : '0'};
 `
 
 const MapHeader = styled.div`
@@ -19,7 +18,7 @@ const MapHeader = styled.div`
   gap: 8px;
   margin-bottom: 20px;
 
-  h1 { margin: 0 auto 0 0; font-size: 24px; line-height: 1.4; }
+  h1 { margin: 0 auto 0 0; font-size: ${({ theme }) => theme.schoolMap.font.heading}; font-weight: ${({ theme }) => theme.schoolMap.font.headingWeight}; line-height: 1.4; }
 
   @media (max-width: 720px) { flex-wrap: wrap; h1 { width: 100%; } }
 `
@@ -27,142 +26,97 @@ const MapHeader = styled.div`
 const Chip = styled.button`
   box-sizing: border-box;
   flex: 0 0 auto;
-  height: 38px;
-  padding: 8px 14px;
+  padding: ${({ theme }) => theme.reportForm.layout.chipPaddingBlock} ${({ theme }) => theme.reportForm.layout.chipPaddingInline};
   border-radius: 999px;
   border: 0;
-  background: #f4eef1;
-  color: #474446;
+  background: ${({ theme }) => theme.schoolMap.color.chip};
+  color: ${({ theme }) => theme.schoolMap.color.secondaryText};
   font: inherit;
-  font-size: 14px;
-  line-height: 1;
+  font-size: ${({ theme }) => theme.schoolMap.font.label};
+  font-weight: ${({ theme }) => theme.schoolMap.font.labelWeight};
+  line-height: ${({ theme }) => theme.auth.font.lineHeight};
   white-space: nowrap;
   cursor: pointer;
 
-  &[aria-pressed='true'] { background: #f7b6d4; color: #a3165f; }
-  &:focus-visible { outline: 2px solid #b32e75; outline-offset: 3px; }
+  &[aria-pressed='true'] { background: ${({ theme }) => theme.schoolMap.color.selected}; color: ${({ theme }) => theme.schoolMap.color.accentText}; }
+  &:focus-visible { outline: 2px solid ${({ theme }) => theme.schoolMap.color.focus}; outline-offset: 3px; }
 `
 
 const PlanFrame = styled.div`
   position: relative;
   flex: 1;
+  width: 100%;
   min-height: 0;
-  overflow: hidden;
-  border-radius: 28px;
-  background: #fff;
+  overflow: auto;
+  scrollbar-gutter: ${({ $hasFloorPlan }) => $hasFloorPlan ? 'stable' : 'auto'};
+  background: ${({ theme }) => theme.schoolMap.color.surface};
 
-  > img { display: block; width: 100%; height: 100%; object-fit: contain; }
-  @media (max-width: 720px) { min-height: 440px; }
-`
-
-const Blueprint = styled.div`
-  position: absolute;
-  inset: 8% 4%;
-  border: 2px solid #65666b;
-  background: repeating-linear-gradient(0deg, transparent 0 68px, #65666b 69px 70px), repeating-linear-gradient(90deg, transparent 0 112px, #65666b 113px 114px);
-
-  &::before { position: absolute; top: 36%; left: 20%; width: 54%; height: 28%; border: 2px solid #65666b; content: ''; }
-
-  span {
-    position: absolute;
-    top: 51%;
-    left: 38%;
-    color: #474b57;
-    font-size: clamp(22px, 3vw, 34px);
-    font-weight: 700;
+  @media (max-width: 980px) {
+    min-height: ${({ $hasFloorPlan }) => $hasFloorPlan ? 'max(264px, calc(100dvh - 216px))' : '280px'};
   }
 `
 
-const Pin = styled.button`
-  position: absolute;
-  z-index: 1;
+const EmptyPlan = styled.div`
   display: grid;
-  width: ${({ $size }) => $size}px;
-  height: ${({ $size }) => $size}px;
+  height: 100%;
   place-items: center;
-  border: none;
-  border-radius: 50%;
-  background: ${({ $level }) => $level === 'high' ? '#fa44a8' : $level === 'mid' ? '#f57ab7' : '#f7b6d4'};
-  color: ${({ $level }) => $level === 'low' ? '#a3165f' : '#fff'};
-  font-size: ${({ $size }) => $size < 40 ? 13 : 15}px;
-  font-weight: 700;
-  cursor: pointer;
-
-  &[aria-pressed='true'] { box-shadow: 0 0 0 6px rgba(250, 68, 168, .2); }
-  &:focus-visible { outline: 2px solid #b32e75; outline-offset: 3px; }
+  color: ${({ theme }) => theme.schoolMap.color.mutedText};
 `
 
 const Legend = styled.p`
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 14px;
-  margin: 16px 0 0;
-  color: #615c5f;
-  font-size: 13px;
+  gap: 8px 20px;
+  margin: 8px 0 0;
+  color: ${({ theme }) => theme.schoolMap.color.mutedText};
+  font-size: ${({ theme }) => theme.schoolMap.font.caption};
 `
 
 const LegendItem = styled.span`
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: #474446;
+  color: ${({ theme }) => theme.schoolMap.color.secondaryText};
 
   &::before {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: ${({ $level }) => $level === 'high' ? '#fa44a8' : $level === 'mid' ? '#f57ab7' : '#f7b6d4'};
+    background: ${({ theme, $level }) => theme.schoolMap.color.reportCount[$level]};
     content: '';
   }
 `
 
-function pinSize(level) {
-  return level === 'high' ? 48 : level === 'mid' ? 40 : 32
-}
-
-const creativeFloorPlans = {
-  1: Creative1FFloorPlan,
-  2: Creative2FFloorPlan,
-  3: Creative3FFloorPlan,
-  4: Creative4FFloorPlan,
-  5: Creative5FFloorPlan,
-}
-
-function getCreativeFloor(placeName) {
-  return Number(/^창의관\s*(\d+)\s*층$/.exec(placeName ?? '')?.[1])
-}
-
-export default function FloorPlan({ floorPlaces, quickPlaces, pins, selectedPlaceId, selectedPinId, onPlaceChange, onPinSelect, onRoomSelect }) {
+export default function FloorPlan({ floorPlaces, quickPlaces, selectedPlaceId, selectedRoom, roomCounts, onPlaceChange, onRoomSelect }) {
   const places = [...floorPlaces, ...quickPlaces]
   const selectedPlace = places.find((place) => place.id === selectedPlaceId) ?? places[0]
-  const Map = creativeFloorPlans[getCreativeFloor(selectedPlace?.name)]
-
-  function selectRoom(event) {
-    const room = event.target.closest('[data-room-name]')
-    onPinSelect?.(null)
-    if (room) onRoomSelect?.(room.dataset.roomName)
-  }
-
-  function selectRoomByKeyboard(event) {
-    if (event.target.tagName.toLowerCase() !== 'g' || !['Enter', ' '].includes(event.key)) return
-    event.preventDefault()
-    selectRoom(event)
-  }
+  const [, building, floor] = buildingFloorPattern.exec(selectedPlace?.name ?? '') ?? []
+  const rows = floorPlanRooms[building]?.[floor]
+  const hasFloorPlan = Boolean(rows)
+  const title = building === '창의관' ? `${floor}층` : `${building} ${floor}층`
+  const columns = building === '창의관' ? 13 : 18
 
   return (
-    <MapArea>
+    <MapArea $hasFloorPlan={hasFloorPlan}>
       <MapHeader>
         <h1>교내 지도 ✦</h1>
-        <PlaceDropdown places={floorPlaces} selectedPlaceId={selectedPlaceId} onSelect={onPlaceChange} />
+        {floorPlaces.length > 0 && <PlaceDropdown places={floorPlaces} selectedPlaceId={selectedPlaceId} onSelect={onPlaceChange} />}
         {quickPlaces.map((place) => <Chip key={place.id} type="button" aria-pressed={place.id === selectedPlaceId} onClick={() => onPlaceChange(place.id)}>{place.name}</Chip>)}
       </MapHeader>
-      <PlanFrame aria-label={`${selectedPlace?.name ?? '선택한 장소'} 평면도`} onClick={selectRoom} onKeyDown={selectRoomByKeyboard}>
-        {Map ? <Map /> : selectedPlace?.image_url ? <img src={selectedPlace.image_url} alt={`${selectedPlace.name} 평면도`} /> : <Blueprint aria-hidden="true"><span>{selectedPlace?.name} 평면도</span></Blueprint>}
-        {pins.map((pin) => {
-          return <Pin key={pin.id} type="button" aria-label={`미해결 신고 ${pin.count}건`} aria-pressed={selectedPinId === pin.id} $level={pin.level} $size={pinSize(pin.level)} style={{ left: `${pin.x}%`, top: `${pin.y}%` }} onClick={(event) => { event.stopPropagation(); onPinSelect?.(pin.id) }}>{pin.count}</Pin>
-        })}
+      <PlanFrame $hasFloorPlan={hasFloorPlan} aria-label={`${selectedPlace?.name ?? '선택한 장소'} 평면도`}>
+        {rows ? (
+          <CreativeFloorPlan
+            placeId={selectedPlace.id}
+            title={title}
+            rows={rows}
+            columns={columns}
+            roomCounts={roomCounts}
+            selectedRoom={selectedRoom}
+            onRoomSelect={onRoomSelect}
+          />
+        ) : <EmptyPlan>표시할 평면도가 없습니다.</EmptyPlan>}
       </PlanFrame>
-      <Legend><LegendItem $level="low">1–2건</LegendItem><LegendItem $level="mid">3–4건</LegendItem><LegendItem $level="high">5건 이상</LegendItem>핀 숫자 = 해당 위치의 미해결 신고 수</Legend>
+      {hasFloorPlan && <Legend><LegendItem $level="low">1–2건</LegendItem><LegendItem $level="mid">3–4건</LegendItem><LegendItem $level="high">5건 이상</LegendItem></Legend>}
     </MapArea>
   )
 }

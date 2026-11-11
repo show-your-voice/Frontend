@@ -7,7 +7,6 @@ import SignupForm from './features/auth/SignupForm.jsx'
 import ManagerInfoPage from './features/managers/ManagerInfoPage.jsx'
 import { managerPreviewData } from './features/managers/managerPreviewData.js'
 import FloorPlan from './features/school-map/FloorPlan.jsx'
-import PlaceActionModal from './features/school-map/PlaceActionModal.jsx'
 import { schoolMapPreviewData, splitPlacesByDisplayType } from './features/school-map/schoolMapPreviewData.js'
 import ReportDetail from './features/reports/ReportDetail.jsx'
 import ReportForm from './features/reports/ReportForm.jsx'
@@ -32,9 +31,11 @@ const ReportPage = styled.main`
 const SchoolMapLayout = styled.main`
   height: calc(100dvh - 64px);
   overflow: hidden;
-  background: #fdf1f6;
-  color: #2e2c2d;
-  font-family: ${({ theme }) => theme.report.font.family};
+  background: ${({ theme }) => theme.schoolMap.color.background};
+  color: ${({ theme }) => theme.schoolMap.color.text};
+  font-family: ${({ theme }) => theme.schoolMap.font.family};
+
+  @media (max-width: 980px) { overflow-y: auto; }
 `
 
 const SchoolMapContent = styled.div`
@@ -42,7 +43,7 @@ const SchoolMapContent = styled.div`
   grid-template-columns: minmax(0, 1fr) 420px;
   gap: 20px;
   height: 100%;
-  padding: 16px 20px 20px;
+  padding: 8px 20px;
   overflow: hidden;
 
   @media (max-width: 980px) { height: auto; min-height: 100%; grid-template-columns: 1fr; overflow: visible; }
@@ -117,81 +118,60 @@ function toReportCard(report, room, place) {
   }
 }
 
-function toPercent(value) {
-  const coordinate = Number(value)
-  if (!Number.isFinite(coordinate)) return null
-  return coordinate >= 0 && coordinate <= 1 ? coordinate * 100 : coordinate
-}
-
-function pinId(report) {
-  const x = toPercent(report.pos_x)
-  const y = toPercent(report.pos_y)
-  return x === null || y === null ? null : `${x.toFixed(4)}:${y.toFixed(4)}`
-}
-
 function isActiveReport(report) {
   return ['UNRESOLVED', 'IN_PROGRESS'].includes(report.status)
 }
 
-function pinLevel(count) {
-  return count >= 5 ? 'high' : count >= 3 ? 'mid' : 'low'
-}
-
 function SchoolMapPage({ places = schoolMapPreviewData.places, rooms = schoolMapPreviewData.rooms, reports = mapReportPreviewData }) {
-  const navigate = useNavigate()
-  const [actionRoom, setActionRoom] = useState(null)
+  const [selectedRoom, setSelectedRoom] = useState(null)
   const { floorPlaces, quickPlaces } = useMemo(() => splitPlacesByDisplayType(places), [places])
   const roomsById = useMemo(() => new Map(rooms.map((room) => [room.id, room])), [rooms])
   const placesById = useMemo(() => new Map(places.map((place) => [place.id, place])), [places])
   const [selectedPlaceId, setSelectedPlaceId] = useState(floorPlaces[0]?.id)
-  const [selectedPinId, setSelectedPinId] = useState(null)
   const [selectedStatus, setSelectedStatus] = useState('all')
   const selectedPlaceReports = useMemo(
     () => reports.filter((report) => String(roomsById.get(report.room_id)?.place_id) === String(selectedPlaceId)),
     [reports, roomsById, selectedPlaceId],
   )
   const activePlaceReports = useMemo(() => selectedPlaceReports.filter(isActiveReport), [selectedPlaceReports])
-  const pins = useMemo(() => {
-    const groups = new Map()
-
-    activePlaceReports.forEach((report) => {
-      const x = toPercent(report.pos_x)
-      const y = toPercent(report.pos_y)
-      if (x === null || y === null) return
-
-      const id = `${x.toFixed(4)}:${y.toFixed(4)}`
-      const group = groups.get(id) ?? { id, x, y, count: 0 }
-      groups.set(id, { ...group, count: group.count + 1 })
-    })
-
-    return [...groups.values()].map((pin) => ({ ...pin, level: pinLevel(pin.count) }))
-  }, [activePlaceReports])
+  const roomCounts = useMemo(() => {
+    const counts = new Map()
+    for (const report of activePlaceReports) {
+      const name = roomsById.get(report.room_id)?.name
+      if (name) counts.set(name, (counts.get(name) ?? 0) + 1)
+    }
+    return counts
+  }, [activePlaceReports, roomsById])
   const placeReports = useMemo(
-    () => activePlaceReports
-      .filter((report) => selectedPinId === null || pinId(report) === selectedPinId)
+    () => (selectedRoom === null ? activePlaceReports : selectedPlaceReports)
+      .filter((report) => {
+        const room = roomsById.get(report.room_id)
+        return selectedRoom === null || selectedRoom.names.includes(room?.name)
+      })
       .map((report) => {
         const room = roomsById.get(report.room_id)
         return toReportCard(report, room, placesById.get(room?.place_id))
       }),
-    [activePlaceReports, selectedPinId, roomsById, placesById],
+    [activePlaceReports, selectedPlaceReports, selectedRoom, roomsById, placesById],
   )
 
   function changePlace(placeId) {
     setSelectedPlaceId(placeId)
-    setSelectedPinId(null)
+    setSelectedRoom(null)
+    setSelectedStatus('all')
   }
 
-  function selectPin(pinId) {
-    setSelectedPinId((currentPinId) => currentPinId === pinId ? null : pinId)
+  function selectRoom(areaId, names) {
+    setSelectedRoom((currentRoom) => currentRoom?.id === areaId ? null : { id: areaId, names })
+    setSelectedStatus('all')
   }
 
   return (
     <SchoolMapLayout>
       <SchoolMapContent>
-        <FloorPlan floorPlaces={floorPlaces} quickPlaces={quickPlaces} pins={pins} selectedPlaceId={selectedPlaceId} selectedPinId={selectedPinId} onPlaceChange={changePlace} onPinSelect={selectPin} onRoomSelect={setActionRoom} />
+        <FloorPlan floorPlaces={floorPlaces} quickPlaces={quickPlaces} selectedPlaceId={selectedPlaceId} onPlaceChange={changePlace} roomCounts={roomCounts} selectedRoom={selectedRoom?.id} onRoomSelect={selectRoom} />
         <ReportList reports={placeReports} selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
       </SchoolMapContent>
-      {actionRoom && <PlaceActionModal roomName={actionRoom} onClose={() => setActionRoom(null)} onReport={() => navigate('/reports/new')} />}
     </SchoolMapLayout>
   )
 }

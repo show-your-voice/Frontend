@@ -40,7 +40,7 @@ export const GlobalStyle = createGlobalStyle`
     --shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 8px 28px rgba(78, 50, 23, 0.06);
     --shadow-warm-lift: 0 10px 30px rgba(78, 50, 23, 0.08);
 
-    font-family: "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-family: ${({ theme }) => theme.report.font.family};
     background: var(--surface-primary);
     color: var(--text-primary);
     font-synthesis: none;

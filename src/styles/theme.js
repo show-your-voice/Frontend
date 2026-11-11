@@ -1,4 +1,33 @@
+const fontFamily = '"42dot Sans", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif'
+const pinkSecondary = '#f7b6d4'
+
 export const theme = {
+  schoolMap: {
+    color: {
+      background: '#fdf1f6',
+      surface: '#ffffff',
+      passage: '#feedf6',
+      accent: '#fa44a8',
+      accentText: '#a3165f',
+      selected: pinkSecondary,
+      text: '#2e2c2d',
+      secondaryText: '#474446',
+      mutedText: '#615c5f',
+      border: '#f4cdde',
+      chip: '#f4eef1',
+      focus: '#b32e75',
+      reportCount: { low: pinkSecondary, mid: '#f57ab7', high: '#fa44a8' },
+    },
+    font: {
+      family: fontFamily,
+      heading: '24px',
+      floorTitle: '20px',
+      label: '14px',
+      caption: '13px',
+      headingWeight: 700,
+      labelWeight: 500,
+    },
+  },
   manager: {
     color: {
       background: '#fdf1f6',
@@ -63,7 +92,7 @@ export const theme = {
       },
     },
     font: {
-      family: '"Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif',
+      family: fontFamily,
       heading: '24px',
       title: '22px',
       body: '20px',
@@ -151,7 +180,7 @@ export const theme = {
       notebookShadow: '#e3e3e3',
     },
     font: {
-      family: '"42dot Sans", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif',
+      family: fontFamily,
       heading: '24px',
       body: '16px',
       label: '14px',
