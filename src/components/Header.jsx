@@ -16,6 +16,16 @@ const HeaderContainer = styled.header`
   svg { width: 20px; height: 20px; }
 
   @media (max-width: 720px) { padding: 0 20px; .brand { margin-right: 20px; } }
+
+  @media (max-width: 480px) {
+    padding: 0 12px;
+
+    .brand { width: 72px; height: 32px; margin-right: 12px; }
+    nav ul { gap: 12px; font-size: 13px; }
+    p { gap: 4px; font-size: 12px; }
+    svg { width: 18px; height: 18px; }
+    .user-role { display: none; }
+  }
 `
 
 export default function Header({ brand, navigationLabel, userName, userRole, variant = 'user' }) {
@@ -36,7 +46,7 @@ export default function Header({ brand, navigationLabel, userName, userRole, var
           <path d="M20 21a8 8 0 0 0-16 0" />
           <circle cx="12" cy="7" r="4" />
         </svg>
-        {userName}{userRole && ` (${userRole})`}
+        {userName}{userRole && <span className="user-role"> ({userRole})</span>}
       </p>
     </HeaderContainer>
   )

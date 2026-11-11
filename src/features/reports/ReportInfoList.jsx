@@ -19,7 +19,7 @@ const Row = styled.div`
   overflow-wrap: anywhere;
 
   dt {
-    color: ${({ theme }) => theme.report.color.muted};
+    color: ${({ theme }) => theme.report.color.body};
     font-size: ${({ theme }) => theme.report.font.body};
   }
 
@@ -45,7 +45,33 @@ const LocationPart = styled.span`
   margin-right: ${({ theme }) => theme.space[1]};
 `
 
-export default function ReportInfoList({ location, category, author, date, manager }) {
+const ManagerValue = styled.span`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: ${({ theme }) => theme.space[2]} ${({ theme }) => theme.space[4]};
+`
+
+const AddManagerButton = styled.button`
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: ${({ theme }) => theme.report.color.focus};
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover { text-decoration: underline; }
+  &:active { color: ${({ theme }) => theme.report.color.selectedText}; text-decoration: underline; }
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.report.color.focus};
+    outline-offset: 3px;
+  }
+`
+
+export default function ReportInfoList({ location, category, author, date, manager, coAssignees = [], onAddCoAssignee }) {
+  const managerNames = [manager, ...coAssignees.map((coAssignee) => coAssignee.name)].filter(Boolean)
   const fields = [
     {
       label: '장소',
@@ -56,7 +82,15 @@ export default function ReportInfoList({ location, category, author, date, manag
     { label: '카테고리', value: category },
     { label: '신고자', value: author },
     { label: '접수일', value: date && <time dateTime={date}>{date.replaceAll('-', '.')}</time> },
-    { label: '담당 관리자', value: manager },
+    {
+      label: '담당 관리자',
+      value: (
+        <ManagerValue>
+          <span>{managerNames.join(', ') || '—'}</span>
+          {onAddCoAssignee && <AddManagerButton type="button" onClick={onAddCoAssignee}>+ 공동 담당자 추가</AddManagerButton>}
+        </ManagerValue>
+      ),
+    },
   ]
 
   return (
