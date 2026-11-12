@@ -4,12 +4,18 @@ import { getRoomAreaId } from './schoolMapPreviewData.js'
 const Canvas = styled.section`
   --passage-background: ${({ theme }) => theme.schoolMap.color.passage};
   --room-gap: 4px;
-  --room-columns: ${({ $columns }) => $columns};
+  --room-columns: ${({ $count }) => Math.max(18, $count)};
+  --plan-columns: ${({ $count }) => $count};
   display: grid;
-  grid-template-rows: max-content auto max-content auto;
+  grid-template-columns: ${({ $grid }) => $grid
+    ? 'calc(100% * var(--plan-columns) / var(--room-columns))'
+    : 'calc((100% + var(--room-gap)) * var(--plan-columns) / var(--room-columns) - var(--room-gap))'};
+  grid-template-rows: ${({ $grid }) => $grid ? 'max-content 1fr' : 'max-content auto max-content auto'};
+  justify-content: center;
   gap: var(--room-gap);
   box-sizing: border-box;
-  width: 100%;
+  width: ${({ $zoom }) => $zoom}%;
+  margin-inline: auto;
   container-type: inline-size;
   min-height: 100%;
   padding: clamp(6px, 1vw, 12px);
@@ -26,15 +32,26 @@ const Title = styled.h2`
 `
 
 const RoomRow = styled.div`
+  --room-size: calc((100% - (var(--plan-columns) - 1) * var(--room-gap)) / var(--plan-columns));
   display: grid;
-  grid-template-columns: repeat(var(--room-columns), minmax(0, 1fr));
+  grid-template-columns: repeat(${({ $count }) => $count}, var(--room-size));
+  justify-content: start;
   align-items: start;
   align-content: start;
   gap: var(--room-gap);
 `
 
-const UpperRoomRow = styled(RoomRow)`
-  align-content: end;
+const RoomSection = styled.div`
+  display: grid;
+  align-content: ${({ $upper }) => $upper ? 'end' : 'start'};
+  gap: var(--room-gap);
+`
+
+const CoordinateGrid = styled.div`
+  display: grid;
+  align-self: center;
+  grid-template-columns: repeat(var(--plan-columns), minmax(0, 1fr));
+  grid-template-rows: repeat(${({ $rows }) => $rows}, calc(100cqw / var(--room-columns)));
 `
 
 const RoomGroup = styled.span`
@@ -56,15 +73,16 @@ const Room = styled.button`
   box-sizing: border-box;
   grid-column: ${({ $elevator }) => $elevator ? '-2 / -1' : 'auto'};
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: ${({ $placed }) => $placed ? 'auto' : '1'};
+  height: ${({ $placed }) => $placed ? '100%' : 'auto'};
   min-width: 0;
   min-height: 0;
   padding: ${({ $grouped }) => $grouped ? '0' : 'clamp(0px, 0.3cqw, 3px)'};
   overflow: hidden;
   place-items: center;
-  border: 2px solid ${({ theme }) => theme.schoolMap.color.accent};
+  border: ${({ $passage }) => $passage ? '0' : '2px solid'} ${({ theme, $passage }) => $passage ? '' : theme.schoolMap.color.accent};
   border-radius: 0;
-  background: ${({ theme }) => theme.schoolMap.color.surface};
+  background: ${({ theme, $passage }) => $passage ? theme.schoolMap.color.passage : theme.schoolMap.color.surface};
   color: inherit;
   font: inherit;
   font-size: clamp(6px, 1.6cqw, ${({ theme }) => theme.schoolMap.font.caption});
@@ -120,37 +138,88 @@ const Corridor = styled.div`
   font-size: ${({ theme }) => theme.schoolMap.font.caption};
 `
 
-export default function CreativeFloorPlan({ placeId, title, rows, columns, roomCounts, selectedRoom, onRoomSelect }) {
-  function renderRoom(name, rooms, elevator = false) {
-    const roomNames = rooms ?? [name]
-    const count = roomNames.reduce((total, roomName) => total + (roomCounts.get(roomName) ?? 0), 0)
-    const areaId = getRoomAreaId(placeId, name)
+function getRoomRegions(cells, gridRows, gridCols) {
+  const valid = cells.filter((cell) => Number.isInteger(cell?.gridRow) && cell.gridRow >= 0 && cell.gridRow < gridRows &&
+    Number.isInteger(cell.gridCol) && cell.gridCol >= 0 && cell.gridCol < gridCols)
+  const occupied = new Map(valid.map((cell) => [`${cell.gridRow}:${cell.gridCol}`, cell]))
+  const positions = [...occupied.values()]
+  if (positions.length === 0) return []
+
+  const top = Math.min(...positions.map((cell) => cell.gridRow))
+  const left = Math.min(...positions.map((cell) => cell.gridCol))
+  const height = Math.max(...positions.map((cell) => cell.gridRow)) - top + 1
+  const width = Math.max(...positions.map((cell) => cell.gridCol)) - left + 1
+  if (positions.length === height * width) {
+    return [{ gridArea: `${top + 1} / ${left + 1} / span ${height} / span ${width}` }]
+  }
+
+  return positions.map(({ gridRow, gridCol }) => ({
+    gridArea: `${gridRow + 1} / ${gridCol + 1}`,
+    borderTopWidth: occupied.has(`${gridRow - 1}:${gridCol}`) ? 0 : undefined,
+    borderRightWidth: occupied.has(`${gridRow}:${gridCol + 1}`) ? 0 : undefined,
+    borderBottomWidth: occupied.has(`${gridRow + 1}:${gridCol}`) ? 0 : undefined,
+    borderLeftWidth: occupied.has(`${gridRow}:${gridCol - 1}`) ? 0 : undefined,
+  }))
+}
+
+export default function CreativeFloorPlan({ placeId, title, rows, grid, columns, splitSupportRoom, zoom, roomCounts, selectedRoom, onRoomSelect }) {
+  const split = rows ? Math.ceil(rows.length / 2) : 0
+
+  function renderRoom(name, { rooms, elevator = false, roomId, style, primary = true, passage = false } = {}) {
+    const roomKeys = roomId == null ? (rooms ?? [name]) : [roomId]
+    const count = roomKeys.reduce((total, key) => total + (roomCounts.get(key) ?? 0), 0)
+    const areaId = roomId ?? getRoomAreaId(placeId, name)
 
     return (
-      <Room key={areaId} data-area-id={areaId} $elevator={elevator} $grouped={Boolean(rooms)} type="button" title={name} aria-label={rooms ? name : undefined} aria-pressed={selectedRoom === areaId} onClick={() => onRoomSelect(areaId, roomNames)}>
-        {rooms ? <RoomGroup>{rooms.map((room) => <span key={room}>{room}</span>)}</RoomGroup> : name}
-        {count > 0 && <Count $count={count} aria-label={`미해결 신고 ${count}건`}>{count}</Count>}
+      <Room key={style ? `${areaId}:${style.gridArea}` : areaId} data-area-id={areaId} $elevator={elevator} $grouped={Boolean(rooms)} $placed={Boolean(style)} $passage={passage} style={style} type="button" title={name} aria-label={name} tabIndex={primary ? undefined : -1} aria-pressed={selectedRoom === areaId} onClick={() => onRoomSelect(areaId, roomKeys)}>
+        {primary && (rooms ? <RoomGroup>{rooms.map((room) => <span key={room}>{room}</span>)}</RoomGroup> : name)}
+        {primary && count > 0 && <Count $count={count} aria-label={`미해결 신고 ${count}건`}>{count}</Count>}
       </Room>
     )
   }
 
-  function renderRow(rooms) {
-    return rooms.map((room) => {
-      if (room === '로비') return <Lobby key={room}>{room}</Lobby>
-      if (typeof room === 'string') return renderRoom(room)
-      return renderRoom(room.name, room.rooms)
-    })
+  function renderRow(rooms, index) {
+    return (
+      <RoomRow key={index} $count={columns}>
+        {rooms.map((room) => {
+          const name = typeof room === 'string' ? room : room.name
+          if (name === '로비') return <Lobby key={room.id ?? name}>{name}</Lobby>
+          return renderRoom(name, { rooms: room.rooms })
+        })}
+      </RoomRow>
+    )
+  }
+
+  if (grid) {
+    return (
+      <Canvas $count={columns} $grid $zoom={zoom} aria-label={`${title} 평면도`}>
+        <Title>{title}</Title>
+        <CoordinateGrid $rows={grid.gridRows}>
+          {grid.rooms.flatMap(({ id, name, cells }) => {
+            const regions = getRoomRegions(cells, grid.gridRows, grid.gridCols)
+            const passage = ['복도', '로비'].includes(name.trim())
+            const rooms = splitSupportRoom && name === '교육환경지원실' && cells.length === 1
+              ? ['청소실무원 휴게실', '재료실', name]
+              : undefined
+
+            return regions.map((style, index) => renderRoom(name, {
+              roomId: id, style, primary: index === 0, rooms, passage,
+            }))
+          })}
+        </CoordinateGrid>
+      </Canvas>
+    )
   }
 
   return (
-    <Canvas $columns={columns} aria-label={`${title} 평면도`}>
+    <Canvas $count={columns} $zoom={zoom} aria-label={`${title} 평면도`}>
       <Title>{title}</Title>
-      <UpperRoomRow>{renderRow(rows[0])}</UpperRoomRow>
-      <RoomRow>
+      <RoomSection $upper>{rows.slice(0, split).map(renderRow)}</RoomSection>
+      <RoomRow $count={columns}>
         <Corridor>복도</Corridor>
-        {renderRoom('승강기', undefined, true)}
+        {renderRoom('승강기', { elevator: true })}
       </RoomRow>
-      <RoomRow>{renderRow(rows[1])}</RoomRow>
+      <RoomSection>{rows.slice(split).map(renderRow)}</RoomSection>
     </Canvas>
   )
 }
