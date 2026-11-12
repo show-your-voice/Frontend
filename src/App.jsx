@@ -193,17 +193,17 @@ function SchoolMapPage() {
   const roomCounts = useMemo(() => {
     const counts = new Map()
     for (const report of activePlaceReports) {
-      const key = isLive ? report.roomId : roomsById.get(report.room_id)?.name
+      const key = report.roomId ?? report.room_id
       if (key != null) counts.set(key, (counts.get(key) ?? 0) + 1)
     }
     return counts
-  }, [activePlaceReports, isLive, roomsById])
+  }, [activePlaceReports])
   const roomSelection = selectedRoom?.placeId === selectedPlaceId && selectedRoom?.isLive === isLive ? selectedRoom : null
   const placeReports = useMemo(
     () => (roomSelection === null ? activePlaceReports : selectedPlaceReports)
-      .filter((report) => roomSelection === null || roomSelection.keys.includes(isLive ? report.roomId : roomsById.get(report.room_id)?.name))
+      .filter((report) => roomSelection === null || roomSelection.id === (report.roomId ?? report.room_id))
       .map((report) => toReportCard(report, roomsById.get(report.room_id), currentPlace)),
-    [activePlaceReports, currentPlace, isLive, roomSelection, roomsById, selectedPlaceReports],
+    [activePlaceReports, currentPlace, roomSelection, roomsById, selectedPlaceReports],
   )
 
   function changePlace(placeId) {
@@ -212,8 +212,8 @@ function SchoolMapPage() {
     setSelectedStatus('all')
   }
 
-  function selectRoom(areaId, keys) {
-    setSelectedRoom(roomSelection?.id === areaId ? null : { id: areaId, keys, placeId: selectedPlaceId, isLive })
+  function selectRoom(roomId) {
+    setSelectedRoom(roomSelection?.id === roomId ? null : { id: roomId, placeId: selectedPlaceId, isLive })
     setSelectedStatus('all')
   }
 

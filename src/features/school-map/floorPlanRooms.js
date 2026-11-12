@@ -1,9 +1,11 @@
-export const floorPlanRooms = {
+import { schoolMapPreviewData } from './schoolMapPreviewData.js'
+
+const floorPlanRooms = {
   '창의관': {
     1: [
       ['방송준비실', '새롬홀', '직원화장실(남)', '직원화장실(여)', '창의공작실', 'AI연구실', '이음실'],
       [
-        { name: '청소실무원 휴게실·재료실·교육환경지원실', rooms: ['청소실무원 휴게실', '재료실', '교육환경지원실'] },
+        '교육환경지원실',
         '발명교육센터', '발명교육연구실', '무한상상실', '로비', '예감존', '교장실',
         'Interview room', '산학협력부', '취업지원센터', '건강체력교실', '밴드부실',
       ],
@@ -47,4 +49,31 @@ export const floorPlanRooms = {
       ['기숙사 501', '기숙사 502', '기숙사 503', '기숙사 504', '기숙사 505', '기숙사 506', '기숙사 507', '기숙사 508', '기숙사 509', '기숙사 510', '기숙사 511', '기숙사 512', '기숙사 513', '기숙사 514', '기숙사 515', '기숙사 516', '기숙사 517', '기숙사 518'],
     ],
   },
+}
+
+export function getPreviewFloorPlan(placeId, building, floor) {
+  const rows = floorPlanRooms[building]?.[floor]
+  if (!rows) return null
+
+  const gridCols = Math.max(...rows.map((row) => row.length))
+  const rooms = rows.flatMap((row, index) => row.map((name, gridCol) => ({
+    id: schoolMapPreviewData.rooms.find((room) => room.place_id === placeId && room.name === name)?.id
+      ?? placeId * 100 + index * 20 + gridCol,
+    name,
+    cells: [{ gridRow: index * 2, gridCol }],
+  })))
+  const corridorCells = Array.from({ length: gridCols - 1 }, (_, gridCol) => ({ gridRow: 1, gridCol }))
+  if (building === '창의관' && floor === '1') {
+    corridorCells.push({ gridRow: 0, gridCol: gridCols - 2 })
+  }
+
+  return {
+    gridRows: 3,
+    gridCols,
+    rooms: [
+      ...rooms,
+      { id: placeId * 100 + 40, name: '복도', cells: corridorCells },
+      { id: placeId * 100 + 41, name: '승강기', cells: [{ gridRow: 1, gridCol: gridCols - 1 }] },
+    ],
+  }
 }

@@ -1,9 +1,5 @@
 export const buildingFloorPattern = /^(창의관|우정관)\s*([1-5])\s*층$/
 
-export function getRoomAreaId(placeId, roomName) {
-  return `${placeId}:${roomName}`
-}
-
 export function splitPlacesByDisplayType(places) {
   return places.reduce((groups, place) => {
     if (buildingFloorPattern.test(place.name)) groups.floorPlaces.push(place)

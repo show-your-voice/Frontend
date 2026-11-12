@@ -1,16 +1,12 @@
 import styled from 'styled-components'
-import { getRoomAreaId } from './schoolMapPreviewData.js'
 
 const Canvas = styled.section`
-  --passage-background: ${({ theme }) => theme.schoolMap.color.passage};
   --room-gap: 4px;
   --room-columns: ${({ $count }) => Math.max(18, $count)};
   --plan-columns: ${({ $count }) => $count};
   display: grid;
-  grid-template-columns: ${({ $grid }) => $grid
-    ? 'calc(100% * var(--plan-columns) / var(--room-columns))'
-    : 'calc((100% + var(--room-gap)) * var(--plan-columns) / var(--room-columns) - var(--room-gap))'};
-  grid-template-rows: ${({ $grid }) => $grid ? 'max-content 1fr' : 'max-content auto max-content auto'};
+  grid-template-columns: calc(100% * var(--plan-columns) / var(--room-columns));
+  grid-template-rows: max-content 1fr;
   justify-content: center;
   gap: var(--room-gap);
   box-sizing: border-box;
@@ -29,22 +25,6 @@ const Title = styled.h2`
   font-size: ${({ theme }) => theme.schoolMap.font.floorTitle};
   font-weight: ${({ theme }) => theme.schoolMap.font.headingWeight};
   text-align: center;
-`
-
-const RoomRow = styled.div`
-  --room-size: calc((100% - (var(--plan-columns) - 1) * var(--room-gap)) / var(--plan-columns));
-  display: grid;
-  grid-template-columns: repeat(${({ $count }) => $count}, var(--room-size));
-  justify-content: start;
-  align-items: start;
-  align-content: start;
-  gap: var(--room-gap);
-`
-
-const RoomSection = styled.div`
-  display: grid;
-  align-content: ${({ $upper }) => $upper ? 'end' : 'start'};
-  gap: var(--room-gap);
 `
 
 const CoordinateGrid = styled.div`
@@ -71,10 +51,8 @@ const Room = styled.button`
   position: relative;
   display: grid;
   box-sizing: border-box;
-  grid-column: ${({ $elevator }) => $elevator ? '-2 / -1' : 'auto'};
   width: 100%;
-  aspect-ratio: ${({ $placed }) => $placed ? 'auto' : '1'};
-  height: ${({ $placed }) => $placed ? '100%' : 'auto'};
+  height: 100%;
   min-width: 0;
   min-height: 0;
   padding: ${({ $grouped }) => $grouped ? '0' : 'clamp(0px, 0.3cqw, 3px)'};
@@ -109,35 +87,6 @@ const Count = styled.span`
   font-size: 11px;
 `
 
-const Lobby = styled.div`
-  position: relative;
-  display: grid;
-  width: 100%;
-  aspect-ratio: 1;
-  place-items: center;
-  background: var(--passage-background);
-  color: ${({ theme }) => theme.schoolMap.color.accentText};
-  font-size: clamp(6px, 1.6cqw, ${({ theme }) => theme.schoolMap.font.caption});
-
-  &::before {
-    position: absolute;
-    inset: calc(-1 * var(--room-gap)) 0 auto;
-    height: var(--room-gap);
-    background: inherit;
-    content: '';
-  }
-`
-
-const Corridor = styled.div`
-  grid-column: 1 / -2;
-  align-self: stretch;
-  display: grid;
-  place-items: center;
-  background: var(--passage-background);
-  color: ${({ theme }) => theme.schoolMap.color.accentText};
-  font-size: ${({ theme }) => theme.schoolMap.font.caption};
-`
-
 function getRoomRegions(cells, gridRows, gridCols) {
   const valid = cells.filter((cell) => Number.isInteger(cell?.gridRow) && cell.gridRow >= 0 && cell.gridRow < gridRows &&
     Number.isInteger(cell.gridCol) && cell.gridCol >= 0 && cell.gridCol < gridCols)
@@ -162,64 +111,39 @@ function getRoomRegions(cells, gridRows, gridCols) {
   }))
 }
 
-export default function CreativeFloorPlan({ placeId, title, rows, grid, columns, splitSupportRoom, zoom, roomCounts, selectedRoom, onRoomSelect }) {
-  const split = rows ? Math.ceil(rows.length / 2) : 0
-
-  function renderRoom(name, { rooms, elevator = false, roomId, style, primary = true, passage = false } = {}) {
-    const roomKeys = roomId == null ? (rooms ?? [name]) : [roomId]
-    const count = roomKeys.reduce((total, key) => total + (roomCounts.get(key) ?? 0), 0)
-    const areaId = roomId ?? getRoomAreaId(placeId, name)
-
-    return (
-      <Room key={style ? `${areaId}:${style.gridArea}` : areaId} data-area-id={areaId} $elevator={elevator} $grouped={Boolean(rooms)} $placed={Boolean(style)} $passage={passage} style={style} type="button" title={name} aria-label={name} tabIndex={primary ? undefined : -1} aria-pressed={selectedRoom === areaId} onClick={() => onRoomSelect(areaId, roomKeys)}>
-        {primary && (rooms ? <RoomGroup>{rooms.map((room) => <span key={room}>{room}</span>)}</RoomGroup> : name)}
-        {primary && count > 0 && <Count $count={count} aria-label={`미해결 신고 ${count}건`}>{count}</Count>}
-      </Room>
-    )
-  }
-
-  function renderRow(rooms, index) {
-    return (
-      <RoomRow key={index} $count={columns}>
-        {rooms.map((room) => {
-          const name = typeof room === 'string' ? room : room.name
-          if (name === '로비') return <Lobby key={room.id ?? name}>{name}</Lobby>
-          return renderRoom(name, { rooms: room.rooms })
-        })}
-      </RoomRow>
-    )
-  }
-
-  if (grid) {
-    return (
-      <Canvas $count={columns} $grid $zoom={zoom} aria-label={`${title} 평면도`}>
-        <Title>{title}</Title>
-        <CoordinateGrid $rows={grid.gridRows}>
-          {grid.rooms.flatMap(({ id, name, cells }) => {
-            const regions = getRoomRegions(cells, grid.gridRows, grid.gridCols)
-            const passage = ['복도', '로비'].includes(name.trim())
-            const rooms = splitSupportRoom && name === '교육환경지원실' && cells.length === 1
-              ? ['청소실무원 휴게실', '재료실', name]
-              : undefined
-
-            return regions.map((style, index) => renderRoom(name, {
-              roomId: id, style, primary: index === 0, rooms, passage,
-            }))
-          })}
-        </CoordinateGrid>
-      </Canvas>
-    )
-  }
-
+export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom, roomCounts, selectedRoom, onRoomSelect }) {
   return (
-    <Canvas $count={columns} $zoom={zoom} aria-label={`${title} 평면도`}>
+    <Canvas $count={grid.gridCols} $zoom={zoom} aria-label={`${title} 평면도`}>
       <Title>{title}</Title>
-      <RoomSection $upper>{rows.slice(0, split).map(renderRow)}</RoomSection>
-      <RoomRow $count={columns}>
-        <Corridor>복도</Corridor>
-        {renderRoom('승강기', { elevator: true })}
-      </RoomRow>
-      <RoomSection>{rows.slice(split).map(renderRow)}</RoomSection>
+      <CoordinateGrid $rows={grid.gridRows}>
+        {grid.rooms.flatMap(({ id, name, cells }) => {
+          const regions = getRoomRegions(cells, grid.gridRows, grid.gridCols)
+          const passage = ['복도', '로비'].includes(name.trim())
+          const labels = splitSupportRoom && name === '교육환경지원실' && cells.length === 1
+            ? ['청소실무원 휴게실', '재료실', name]
+            : null
+          const count = roomCounts.get(id) ?? 0
+
+          return regions.map((style, index) => (
+            <Room
+              key={`${id}:${style.gridArea}`}
+              data-area-id={id}
+              $grouped={Boolean(labels)}
+              $passage={passage}
+              style={style}
+              type="button"
+              title={name}
+              aria-label={name}
+              tabIndex={index === 0 ? undefined : -1}
+              aria-pressed={selectedRoom === id}
+              onClick={() => onRoomSelect(id)}
+            >
+              {index === 0 && (labels ? <RoomGroup>{labels.map((label) => <span key={label}>{label}</span>)}</RoomGroup> : name)}
+              {index === 0 && count > 0 && <Count $count={count} aria-label={`미해결 신고 ${count}건`}>{count}</Count>}
+            </Room>
+          ))
+        })}
+      </CoordinateGrid>
     </Canvas>
   )
 }

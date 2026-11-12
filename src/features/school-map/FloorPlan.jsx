@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
 import PlaceDropdown from './PlaceDropdown.jsx'
 import CreativeFloorPlan from './CreativeFloorPlan.jsx'
-import { floorPlanRooms } from './floorPlanRooms.js'
+import { getPreviewFloorPlan } from './floorPlanRooms.js'
 import { buildingFloorPattern } from './schoolMapPreviewData.js'
 
 const MapArea = styled.section`
@@ -118,14 +118,11 @@ export default function FloorPlan({ floorPlaces, quickPlaces, selectedPlaceId, s
   const places = [...floorPlaces, ...quickPlaces]
   const selectedPlace = places.find((place) => place.id === selectedPlaceId) ?? places[0]
   const [, building, floor] = buildingFloorPattern.exec(selectedPlace?.name ?? '') ?? []
-  const data = floorResult?.data
+  const data = usePreview ? getPreviewFloorPlan(selectedPlaceId, building, floor) : floorResult?.data
   const validPlan = Number.isInteger(data?.gridCols) && data.gridCols > 0 &&
     Number.isInteger(data.gridRows) && data.gridRows > 0 && Array.isArray(data.rooms) &&
     data.rooms.every((room) => room?.id != null && typeof room.name === 'string' && Array.isArray(room.cells))
-  const grid = !usePreview && validPlan ? data : null
-  const rows = usePreview ? floorPlanRooms[building]?.[floor] : null
-  const columns = grid?.gridCols ?? Math.max(2, ...(rows ?? []).map((row) => row.length))
-  const hasFloorPlan = Boolean(grid || rows)
+  const hasFloorPlan = validPlan
   const title = building === '창의관' ? `${floor}층` : selectedPlace?.name
   const expectsPlan = !usePreview && (building || (selectedPlace?.gridRows != null && selectedPlace?.gridCols != null))
   let emptyMessage = '표시할 평면도가 없습니다.'
@@ -164,11 +161,8 @@ export default function FloorPlan({ floorPlaces, quickPlaces, selectedPlaceId, s
         <PlanFrame $hasFloorPlan={hasFloorPlan} aria-label={`${selectedPlace?.name ?? '선택한 장소'} 평면도`}>
           {hasFloorPlan ? (
             <CreativeFloorPlan
-              placeId={selectedPlace.id}
               title={title}
-              rows={rows}
-              grid={grid}
-              columns={columns}
+              grid={data}
               splitSupportRoom={building === '창의관' && floor === '1'}
               zoom={zoom}
               roomCounts={roomCounts}
