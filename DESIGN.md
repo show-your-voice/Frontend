@@ -51,6 +51,12 @@
 페이지 여백 12px, 필터 높이 44px로 줄인다.
 긴 텍스트는 말줄임표로 처리하며 메타데이터는 줄바꿈할 수 있다.
 
+Layout: 관리자 신고 조회 - 넓은 지도 슬롯과 좁은 신고 레일을 함께 유지 -> main-with-rail (https://github.com/changeroa/StyleGallery/blob/main/patterns/split-sidebar/main-with-rail.md); scroll owner: 데스크톱은 `ReportList` 패널, 980px 이하는 문서; anti-patterns: 비어 있는 지도 슬롯에 임의 기능을 추가하지 않고, 신고 레일 안에 중첩 스크롤 영역을 만들지 않는다.
+
+Layout: 관리자 신고 상세 조회 - 긴 단일 신고를 읽기 좋은 폭으로 중앙 정렬 -> content-limiter (https://github.com/changeroa/StyleGallery/blob/main/patterns/containment/content-limiter.md); scroll owner: 문서; anti-patterns: 상세 내부에 별도 스크롤을 만들거나 조회 범위에 상태 변경 컨트롤을 추가하지 않는다.
+
+Layout: 공동 담당자 추가 모달 - 상세 흐름을 유지한 채 중앙 dialog를 겹쳐 표시 -> imposter (https://github.com/changeroa/StyleGallery/blob/main/patterns/overlay-exception/imposter.md); scroll owner: 내용이 뷰포트를 넘을 때 native `dialog`; anti-patterns: 배경과 포커스를 동시에 조작하게 두거나 검색 결과에 별도 중첩 스크롤을 만들지 않는다.
+
 ## 5. 재사용 컴포넌트
 
 - `FilterChip`: 실제 button, 선택 상태는 배경색과 `aria-pressed`로 표시.
@@ -277,3 +283,70 @@ Escape·취소는 삭제 없이 닫고 기존 삭제 버튼으로 포커스를 �
 삭제 확인은 전달된 콜백으로 처리하고 목록으로 돌아간다. 앱의 미리보기 데이터만
 메모리에서 제거하며 선택 필터는 유지한다. 새로고침하면 예시 데이터는 복원된다.
 실제 서버 삭제·권한 확인·목록 집계 API는 이번 퍼블리싱 범위에 포함하지 않는다.
+
+## 14. 관리자 신고 전체 조회
+
+`/manager/reports`는 관리자용 교내 지도 화면의 첫 구현 범위다. Student 교내 지도와
+같은 헤더 아래 2열 셸을 사용하되, 지도는 후속 작업이므로 왼쪽 영역을 비워 둔다.
+오른쪽에는 기존 `ReportList`, `ReportCard`, `FilterChip`, `StatusBadge`를 재사용한다.
+
+- Primary action: 처리 상태 필터로 전체 신고 목록을 좁혀 본다.
+- Information priorities: 1) 조회된 신고 제목과 상태, 2) 내용 요약, 3) 접수일·신고자·장소.
+- Left out on purpose: 지도, 지도 핀, ‘내 담당만 보기’, 상세 이동, 상태 변경, 페이지네이션.
+- Required content: ‘내 담당 신고’ 제목, 조회 건수, 전체·접수·처리 중·처리 완료 필터,
+  신고 제목·내용·상태·접수일·신고자·장소, 로딩·오류·빈 목록 상태.
+- Data shape -> component: 여러 신고 비교 -> 처리 상태 필터 + 세로 결과 목록.
+
+데이터는 세션 쿠키를 포함한 `GET /api/posts` 응답을 사용한다. 이번 범위에서는
+`placeId`와 `status` 쿼리를 보내지 않아 전체 신고만 조회한다. 서버 응답의
+`UNRESOLVED / IN_PROGRESS / RESOLVED`는 기존 화면 명칭인 `접수 / 처리 중 / 처리 완료`와
+기존 badge tone으로 변환한다. 서버에 담당자 필터 계약이 없으므로 ‘내 담당만 보기’
+컨트롤을 비활성 형태로도 만들지 않는다. API 실패 시 원인을 추측하지 않는 오류 문구와
+다시 시도 버튼을 제공하고, 결과가 없거나 선택 상태에 결과가 없으면 빈 상태를 표시한다.
+
+## 15. 관리자 신고 상세 조회
+
+`/manager/reports/:reportId`는 관리자 전체 신고 목록에서 선택한 신고 한 건을
+`GET /api/posts/{id}`로 조회한다. Student 상세 화면의 `ReportDetail`,
+`ReportStatusTimeline`, `ReportInfoList`, `ReportAttachments`, `StatusBadge`를
+그대로 재사용하고 관리자 헤더 아래 같은 읽기 폭으로 배치한다.
+
+- Primary action: ‘목록으로’ 버튼으로 관리자 전체 신고 목록에 돌아간다.
+- Information priorities: 1) 상태·제목·처리 이력, 2) 장소·카테고리·신고자·접수일·담당자,
+  3) 첨부 사진·본문·개선 방향.
+- Left out on purpose: 처리 상태 변경, 상세 화면의 삭제 실행,
+  지도·핀, 서버 응답에 없는 추가 담당자와 처리 이력 추측.
+- Required content: 목록 복귀, 현재 상태, 제목, 접수·처리 중·처리 완료 이력,
+  장소·카테고리·신고자 계정·접수일·담당 관리자, 첨부 사진, 본문, 개선 방향,
+  로딩·오류·다시 시도 상태.
+- Data shape -> component: 한 신고 객체 -> 기존 상세 보기와 목록 복귀 동작.
+
+서버의 `UNRESOLVED / IN_PROGRESS / RESOLVED`는 기존 상세 화면의
+`received / inProgress / completed` tone으로 변환한다. 신고자는 이름과 로그인 아이디를
+함께 표시하고 담당자가 없으면 ‘—’를 사용한다. 사진 URL은 응답 순서를 유지하며 실패한
+이미지는 기존 대체 아이콘으로 표시한다. 목록 카드 선택은 실제 버튼으로 상세 경로에
+이동하고, 상세 요청 실패 시 목록으로 강제 이동하지 않고 오류와 재시도를 제공한다.
+
+## 16. 공동 담당자 추가
+
+관리자 신고 상세의 ‘담당 관리자’ 값 옆에 ‘+ 공동 담당자 추가’ 버튼을 둔다.
+버튼은 기존 네이티브 `Modal`을 사용한 dialog를 열고, `GET /api/managers`에서 받은
+선생님을 이름 또는 이메일로 검색해 한 명만 선택하도록 한다.
+
+- Primary action: 선택한 선생님을 공동 담당자로 추가한다.
+- Information priorities: 1) 검색 입력과 결과, 2) 선택된 관리자, 3) 취소·추가 결과.
+- Left out on purpose: 다중 선택, 새 관리자 생성, 공동 담당자 삭제, 담당 장소 편집,
+  상태 변경과 지도 상호작용.
+- Required content: 제목, 닫기 버튼, 설명, ‘관리자 검색’ 라벨과 입력,
+  관리자 이름 목록, 선택 표시, 로딩·오류·빈 검색 결과, 취소·추가 버튼.
+- Color fidelity note: 레퍼런스의 고채도 핑크보다 기존 `report.color.focus`를 입력 경계,
+  선택 체크, 주요 CTA에 사용한다. 흰 배경의 컨트롤 경계 3:1과 흰 CTA 텍스트 4.5:1
+  대비를 우선한 접근성 보정이며, 구조·간격·선택 상태는 레퍼런스 해부 구조를 따른다.
+- Data shape -> component: 여러 관리자 중 한 명 선택 -> 검색 + 단일 선택 목록 + 확인 action.
+
+현재 주 담당자와 이미 추가된 공동 담당자는 후보에서 제외한다. 검색어는 서버 계약을
+추측해 쿼리로 보내지 않고 받은 관리자 목록에서 이름과 이메일을 기준으로 필터링한다.
+선택 전 ‘추가하기’는 비활성화하고, 요청 중에는 입력·목록·버튼을 잠근다.
+`POST /api/posts/{id}/co-assignees` 성공 응답의 상세 데이터로 현재 화면을 즉시 갱신한 뒤
+모달을 닫는다. 불러오기 실패에는 다시 시도, 추가 실패에는 모달 안의 오류 문구를 제공한다.
+Escape·닫기·취소는 변경 없이 모달을 닫고 열기 버튼으로 포커스를 복원한다.
