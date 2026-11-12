@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Navigate, Outlet, RouterProvider, createBrowserRouter, useMatches, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import styled from 'styled-components'
+import { request } from './api/client.js'
 import Header from './components/Header.jsx'
 import LoginForm from './features/auth/LoginForm.jsx'
 import SignupForm from './features/auth/SignupForm.jsx'
 import ManagerInfoPage from './features/managers/ManagerInfoPage.jsx'
 import { managerPreviewData } from './features/managers/managerPreviewData.js'
 import FloorPlan from './features/school-map/FloorPlan.jsx'
-import PlaceActionModal from './features/school-map/PlaceActionModal.jsx'
 import { schoolMapPreviewData, splitPlacesByDisplayType } from './features/school-map/schoolMapPreviewData.js'
 import ReportDetail from './features/reports/ReportDetail.jsx'
 import ReportForm from './features/reports/ReportForm.jsx'
@@ -34,9 +34,9 @@ const ReportPage = styled.main`
 const SchoolMapLayout = styled.main`
   height: calc(100dvh - 64px);
   overflow: hidden;
-  background: #fdf1f6;
-  color: #2e2c2d;
-  font-family: ${({ theme }) => theme.report.font.family};
+  background: ${({ theme }) => theme.schoolMap.color.background};
+  color: ${({ theme }) => theme.schoolMap.color.text};
+  font-family: ${({ theme }) => theme.schoolMap.font.family};
 
   @media (max-width: 980px) {
     height: auto;
@@ -50,7 +50,7 @@ const SchoolMapContent = styled.div`
   grid-template-columns: minmax(0, 1fr) 420px;
   gap: 20px;
   height: 100%;
-  padding: 16px 20px 20px;
+  padding: 8px 20px;
   overflow: hidden;
 
   @media (max-width: 980px) { height: auto; min-height: 100%; grid-template-columns: 1fr; overflow: visible; }
@@ -132,88 +132,97 @@ function toReportCard(report, room, place) {
     id: report.id,
     title: report.title,
     description: report.content,
-    date: report.created_at?.slice(0, 10) ?? '',
-    author: report.author_name ?? '',
-    location: room && place ? `${place.name} · ${room.name}` : '',
-    status: statusByValue[report.status] ?? report.status,
+    date: (report.receivedAt ?? report.created_at)?.slice(0, 10) ?? '',
+    author: report.authorName ?? report.author_name ?? '',
+    location: room && place ? `${place.name} · ${room.name}` : report.roomName ? `${report.placeName} · ${report.roomName}` : '',
+    status: statusByValue[report.status?.code ?? report.status] ?? report.status,
   }
-}
-
-function toPercent(value) {
-  const coordinate = Number(value)
-  if (!Number.isFinite(coordinate)) return null
-  return coordinate >= 0 && coordinate <= 1 ? coordinate * 100 : coordinate
-}
-
-function pinId(report) {
-  const x = toPercent(report.pos_x)
-  const y = toPercent(report.pos_y)
-  return x === null || y === null ? null : `${x.toFixed(4)}:${y.toFixed(4)}`
 }
 
 function isActiveReport(report) {
-  return ['UNRESOLVED', 'IN_PROGRESS'].includes(report.status)
+  return ['UNRESOLVED', 'IN_PROGRESS'].includes(report.status?.code ?? report.status)
 }
 
-function pinLevel(count) {
-  return count >= 5 ? 'high' : count >= 3 ? 'mid' : 'low'
-}
-
-function SchoolMapPage({ places = schoolMapPreviewData.places, rooms = schoolMapPreviewData.rooms, reports = mapReportPreviewData }) {
-  const navigate = useNavigate()
-  const [actionRoom, setActionRoom] = useState(null)
-  const { floorPlaces, quickPlaces } = useMemo(() => splitPlacesByDisplayType(places), [places])
-  const roomsById = useMemo(() => new Map(rooms.map((room) => [room.id, room])), [rooms])
-  const placesById = useMemo(() => new Map(places.map((place) => [place.id, place])), [places])
-  const [selectedPlaceId, setSelectedPlaceId] = useState(floorPlaces[0]?.id)
-  const [selectedPinId, setSelectedPinId] = useState(null)
+function SchoolMapPage() {
+  const [livePlaces, setLivePlaces] = useState(null)
+  const [liveFloor, setLiveFloor] = useState(null)
+  const [liveReports, setLiveReports] = useState(null)
+  const [selectedRoom, setSelectedRoom] = useState(null)
+  const [selectedPlace, setSelectedPlace] = useState(null)
   const [selectedStatus, setSelectedStatus] = useState('all')
+  const places = livePlaces ?? schoolMapPreviewData.places
+  const { floorPlaces, quickPlaces } = useMemo(() => splitPlacesByDisplayType(places), [places])
+  const isLive = livePlaces !== null
+  const currentPlace = places.find((place) => selectedPlace?.isLive === isLive && selectedPlace.id === place.id) ?? floorPlaces[0] ?? quickPlaces[0]
+  const selectedPlaceId = currentPlace?.id
+  const isFloor = floorPlaces.some((place) => place.id === selectedPlaceId) ||
+    (currentPlace?.gridRows != null && currentPlace?.gridCols != null)
+  const floorResult = liveFloor?.placeId === selectedPlaceId ? liveFloor : null
+
+  useEffect(() => {
+    let ignore = false
+    request('/api/places').then((data) => {
+      if (!ignore && Array.isArray(data)) setLivePlaces(data)
+    }).catch(() => {})
+    return () => { ignore = true }
+  }, [])
+
+  useEffect(() => {
+    if (!isLive || selectedPlaceId == null) return
+
+    let ignore = false
+    if (isFloor) {
+      request(`/api/places/${selectedPlaceId}/floor-plan`)
+        .then((data) => { if (!ignore) setLiveFloor({ placeId: selectedPlaceId, data }) })
+        .catch(() => { if (!ignore) setLiveFloor({ placeId: selectedPlaceId, data: null }) })
+    }
+    request(`/api/posts?placeId=${selectedPlaceId}`)
+      .then((data) => { if (!ignore) setLiveReports({ placeId: selectedPlaceId, data: Array.isArray(data) ? data : [] }) })
+      .catch(() => { if (!ignore) setLiveReports({ placeId: selectedPlaceId, data: [] }) })
+    return () => { ignore = true }
+  }, [isLive, isFloor, selectedPlaceId])
+
+  const roomsById = useMemo(() => new Map(schoolMapPreviewData.rooms.map((room) => [room.id, room])), [])
   const selectedPlaceReports = useMemo(
-    () => reports.filter((report) => String(roomsById.get(report.room_id)?.place_id) === String(selectedPlaceId)),
-    [reports, roomsById, selectedPlaceId],
+    () => isLive
+      ? (liveReports?.placeId === selectedPlaceId ? (liveReports?.data ?? []) : [])
+      : mapReportPreviewData.filter((report) => roomsById.get(report.room_id)?.place_id === selectedPlaceId),
+    [isLive, liveReports, roomsById, selectedPlaceId],
   )
   const activePlaceReports = useMemo(() => selectedPlaceReports.filter(isActiveReport), [selectedPlaceReports])
-  const pins = useMemo(() => {
-    const groups = new Map()
-
-    activePlaceReports.forEach((report) => {
-      const x = toPercent(report.pos_x)
-      const y = toPercent(report.pos_y)
-      if (x === null || y === null) return
-
-      const id = `${x.toFixed(4)}:${y.toFixed(4)}`
-      const group = groups.get(id) ?? { id, x, y, count: 0 }
-      groups.set(id, { ...group, count: group.count + 1 })
-    })
-
-    return [...groups.values()].map((pin) => ({ ...pin, level: pinLevel(pin.count) }))
+  const roomCounts = useMemo(() => {
+    const counts = new Map()
+    for (const report of activePlaceReports) {
+      const key = report.roomId ?? report.room_id
+      if (key != null) counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    return counts
   }, [activePlaceReports])
+  const roomSelection = selectedRoom?.placeId === selectedPlaceId && selectedRoom?.isLive === isLive ? selectedRoom : null
   const placeReports = useMemo(
-    () => activePlaceReports
-      .filter((report) => selectedPinId === null || pinId(report) === selectedPinId)
-      .map((report) => {
-        const room = roomsById.get(report.room_id)
-        return toReportCard(report, room, placesById.get(room?.place_id))
-      }),
-    [activePlaceReports, selectedPinId, roomsById, placesById],
+    () => (roomSelection === null ? activePlaceReports : selectedPlaceReports)
+      .filter((report) => roomSelection === null || roomSelection.id === (report.roomId ?? report.room_id))
+      .map((report) => toReportCard(report, roomsById.get(report.room_id), currentPlace)),
+    [activePlaceReports, currentPlace, roomSelection, roomsById, selectedPlaceReports],
   )
 
   function changePlace(placeId) {
-    setSelectedPlaceId(placeId)
-    setSelectedPinId(null)
+    setSelectedPlace({ id: placeId, isLive })
+    setSelectedRoom(null)
+    setSelectedStatus('all')
   }
 
-  function selectPin(pinId) {
-    setSelectedPinId((currentPinId) => currentPinId === pinId ? null : pinId)
+  function selectRoom(roomId) {
+    setSelectedRoom(roomSelection?.id === roomId ? null : { id: roomId, placeId: selectedPlaceId, isLive })
+    setSelectedStatus('all')
   }
 
   return (
     <SchoolMapLayout>
       <SchoolMapContent>
-        <FloorPlan floorPlaces={floorPlaces} quickPlaces={quickPlaces} pins={pins} selectedPlaceId={selectedPlaceId} selectedPinId={selectedPinId} onPlaceChange={changePlace} onPinSelect={selectPin} onRoomSelect={setActionRoom} />
+        <FloorPlan floorPlaces={floorPlaces} quickPlaces={quickPlaces} selectedPlaceId={selectedPlaceId} onPlaceChange={changePlace} roomCounts={roomCounts} selectedRoom={roomSelection?.id} onRoomSelect={selectRoom} usePreview={!isLive} floorResult={floorResult} />
         <ReportList reports={placeReports} selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
       </SchoolMapContent>
-      {actionRoom && <PlaceActionModal roomName={actionRoom} onClose={() => setActionRoom(null)} onReport={() => navigate('/reports/new')} />}
     </SchoolMapLayout>
   )
 }
