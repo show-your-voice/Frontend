@@ -11,6 +11,10 @@ export function signUp({ loginId, email, name, password }) {
   })
 }
 
+export function logout() {
+  return request('/api/auth/logout', { method: 'POST' })
+}
+
 export function fetchMe() {
   return request('/api/users/me')
 }

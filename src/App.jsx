@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Navigate, Outlet, RouterProvider, createBrowserRouter, useMatches, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import styled from 'styled-components'
 import Header from './components/Header.jsx'
+import { logout } from './features/auth/authApi.js'
 import LoginForm from './features/auth/LoginForm.jsx'
 import SignupForm from './features/auth/SignupForm.jsx'
 import ManagerInfoPage from './features/managers/ManagerInfoPage.jsx'
@@ -77,9 +78,17 @@ function SignupPage() {
 }
 
 function HeaderLayout() {
+  const navigate = useNavigate()
   const matches = useMatches()
   const header = [...matches].reverse().find((match) => match.handle?.header)?.handle.header
   const [reports, setReports] = useState(reportPreviewData)
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  async function handleLogout() {
+    setLoggingOut(true)
+    await logout().catch(() => {})
+    navigate('/login', { replace: true })
+  }
 
   function deleteReport(reportId) {
     setReports((currentReports) => currentReports.filter((report) => report.id !== reportId))
@@ -93,6 +102,8 @@ function HeaderLayout() {
         userName={header?.userName ?? '김학생'}
         userRole={header?.userRole}
         variant={header?.variant ?? 'user'}
+        loggingOut={loggingOut}
+        onLogout={handleLogout}
       />
       <Outlet context={{ reports, deleteReport }} />
     </>
