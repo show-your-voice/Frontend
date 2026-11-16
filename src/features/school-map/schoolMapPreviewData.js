@@ -1,10 +1,8 @@
-import creativeBuilding1F from '../../assets/creative-building-1f.png'
-
-export const creativeBuildingFloorPattern = /^창의관\s*\d+\s*층$/
+export const buildingFloorPattern = /^(창의관|우정관)\s*([1-5])\s*층$/
 
 export function splitPlacesByDisplayType(places) {
   return places.reduce((groups, place) => {
-    if (creativeBuildingFloorPattern.test(place.name)) groups.floorPlaces.push(place)
+    if (buildingFloorPattern.test(place.name)) groups.floorPlaces.push(place)
     else groups.quickPlaces.push(place)
     return groups
   }, { floorPlaces: [], quickPlaces: [] })
@@ -12,18 +10,22 @@ export function splitPlacesByDisplayType(places) {
 
 export const schoolMapPreviewData = {
   places: [
-    { id: 1, name: '창의관 1층', image_url: creativeBuilding1F },
-    { id: 2, name: '창의관 2층', image_url: null },
-    { id: 3, name: '창의관 3층', image_url: null },
-    { id: 4, name: '창의관 4층', image_url: null },
-    { id: 5, name: '창의관 5층', image_url: null },
-    { id: 6, name: '우정관', image_url: null },
-    { id: 7, name: '운동장', image_url: null },
+    { id: 1, name: '창의관 1층' },
+    { id: 2, name: '창의관 2층' },
+    { id: 3, name: '창의관 3층' },
+    { id: 4, name: '창의관 4층' },
+    { id: 5, name: '창의관 5층' },
+    { id: 6, name: '우정관 1층' },
+    { id: 8, name: '우정관 2층' },
+    { id: 9, name: '우정관 3층' },
+    { id: 10, name: '우정관 4층' },
+    { id: 11, name: '우정관 5층' },
+    { id: 7, name: '운동장' },
   ],
   rooms: [
-    { id: 1, name: '화장실(남)', place_id: 1 },
-    { id: 2, name: '임베디드1실', place_id: 1 },
-    { id: 3, name: '1-2반', place_id: 1 },
-    { id: 4, name: '독서실', place_id: 1 },
+    { id: 1, name: '화장실(남)', place_id: 4 },
+    { id: 2, name: '임베디드1실', place_id: 4 },
+    { id: 3, name: '1-2반', place_id: 4 },
+    { id: 4, name: '독서실', place_id: 10 },
   ],
 }
