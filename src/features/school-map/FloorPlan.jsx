@@ -65,9 +65,12 @@ const PlanFrame = styled.div`
 `
 
 const EmptyPlan = styled.div`
-  display: grid;
+  display: flex;
+  flex-direction: column;
   height: 100%;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   color: ${({ theme }) => theme.schoolMap.color.mutedText};
 `
 
@@ -112,7 +115,10 @@ function clampZoom(value) {
   return Math.min(maxZoom, Math.max(minZoom, value))
 }
 
-export default function FloorPlan({ floorPlaces, quickPlaces, selectedPlaceId, selectedRoom, roomCounts, onPlaceChange, onRoomSelect, usePreview, floorResult }) {
+export default function FloorPlan({
+  floorPlaces, quickPlaces, selectedPlaceId, selectedRoom, roomCounts, onPlaceChange, onRoomSelect,
+  usePreview, floorResult, placesLoading, placesError, onRetryPlaces, onRetryFloor,
+}) {
   const [zoom, setZoom] = useState(100)
   const frameRef = useRef(null)
   const places = [...floorPlaces, ...quickPlaces]
@@ -125,10 +131,19 @@ export default function FloorPlan({ floorPlaces, quickPlaces, selectedPlaceId, s
   const hasFloorPlan = validPlan
   const title = building === '창의관' ? `${floor}층` : selectedPlace?.name
   const expectsPlan = !usePreview && (building || (selectedPlace?.gridRows != null && selectedPlace?.gridCols != null))
-  let emptyMessage = '표시할 평면도가 없습니다.'
-  if (expectsPlan && !floorResult) emptyMessage = '평면도를 불러오는 중입니다.'
-  if (expectsPlan && floorResult && (!data || (data.gridRows != null && data.gridCols != null && !validPlan))) {
-    emptyMessage = '평면도를 불러오지 못했습니다.'
+  const noGrid = data?.gridRows === null && data?.gridCols === null
+  let emptyMessage = selectedPlace ? '표시할 평면도가 없습니다.' : '조회할 장소가 없습니다.'
+  let retry
+  if (placesLoading) {
+    emptyMessage = '장소 목록을 불러오는 중입니다.'
+  } else if (placesError) {
+    emptyMessage = placesError
+    retry = onRetryPlaces
+  } else if (expectsPlan && !floorResult) {
+    emptyMessage = '평면도를 불러오는 중입니다.'
+  } else if (expectsPlan && !validPlan && !noGrid) {
+    emptyMessage = floorResult?.error ?? '평면도를 불러오지 못했습니다.'
+    retry = onRetryFloor
   }
 
   useEffect(() => {
@@ -169,7 +184,12 @@ export default function FloorPlan({ floorPlaces, quickPlaces, selectedPlaceId, s
               selectedRoom={selectedRoom}
               onRoomSelect={onRoomSelect}
             />
-          ) : <EmptyPlan role="status">{emptyMessage}</EmptyPlan>}
+          ) : (
+            <EmptyPlan>
+              <span role="status">{emptyMessage}</span>
+              {retry && <Chip type="button" onClick={retry}>다시 시도</Chip>}
+            </EmptyPlan>
+          )}
         </PlanFrame>
         {hasFloorPlan && (
           <ZoomControls role="group" aria-label="평면도 확대 및 축소">

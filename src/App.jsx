@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Navigate, Outlet, RouterProvider, createBrowserRouter, useMatches, useNavigate, useOutletContext, useParams } from 'react-router-dom'
+import { Navigate, Outlet, RouterProvider, createBrowserRouter, useMatches, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
 import styled from 'styled-components'
-import { request } from './api/client.js'
+import { ApiError, request } from './api/client.js'
 import Header from './components/Header.jsx'
 import { logout } from './features/auth/authApi.js'
 import LoginForm from './features/auth/LoginForm.jsx'
@@ -154,51 +154,83 @@ function isActiveReport(report) {
   return ['UNRESOLVED', 'IN_PROGRESS'].includes(report.status?.code ?? report.status)
 }
 
+function mapRequestError(error, subject) {
+  return error instanceof ApiError && error.status === 401
+    ? '로그인 후 다시 시도해 주세요.'
+    : `${subject} 불러오지 못했습니다.`
+}
+
 function SchoolMapPage() {
+  const [searchParams] = useSearchParams()
+  const usePreview = searchParams.get('preview') === '1'
+  return <SchoolMapContentPage key={String(usePreview)} usePreview={usePreview} />
+}
+
+function SchoolMapContentPage({ usePreview }) {
   const [livePlaces, setLivePlaces] = useState(null)
+  const [placesError, setPlacesError] = useState('')
+  const [placesAttempt, setPlacesAttempt] = useState(0)
+  const [floorAttempt, setFloorAttempt] = useState(0)
+  const [reportsAttempt, setReportsAttempt] = useState(0)
   const [liveFloor, setLiveFloor] = useState(null)
   const [liveReports, setLiveReports] = useState(null)
   const [selectedRoom, setSelectedRoom] = useState(null)
   const [selectedPlace, setSelectedPlace] = useState(null)
   const [selectedStatus, setSelectedStatus] = useState('all')
-  const places = livePlaces ?? schoolMapPreviewData.places
-  const { floorPlaces, quickPlaces } = useMemo(() => splitPlacesByDisplayType(places), [places])
-  const isLive = livePlaces !== null
-  const currentPlace = places.find((place) => selectedPlace?.isLive === isLive && selectedPlace.id === place.id) ?? floorPlaces[0] ?? quickPlaces[0]
+  const places = usePreview ? schoolMapPreviewData.places : livePlaces
+  const { floorPlaces, quickPlaces } = useMemo(() => splitPlacesByDisplayType(places ?? []), [places])
+  const isLive = !usePreview
+  const currentPlace = places?.find((place) => selectedPlace?.isLive === isLive && selectedPlace.id === place.id) ?? floorPlaces[0] ?? quickPlaces[0]
   const selectedPlaceId = currentPlace?.id
   const isFloor = floorPlaces.some((place) => place.id === selectedPlaceId) ||
     (currentPlace?.gridRows != null && currentPlace?.gridCols != null)
-  const floorResult = liveFloor?.placeId === selectedPlaceId ? liveFloor : null
+  const floorResult = liveFloor?.placeId === selectedPlaceId && liveFloor?.attempt === floorAttempt ? liveFloor : null
+  const reportsResult = liveReports?.placeId === selectedPlaceId && liveReports?.attempt === reportsAttempt ? liveReports : null
+  const placesLoading = isLive && livePlaces === null && !placesError
 
   useEffect(() => {
+    if (usePreview) return
     let ignore = false
     request('/api/places').then((data) => {
-      if (!ignore && Array.isArray(data)) setLivePlaces(data)
-    }).catch(() => {})
+      if (!Array.isArray(data)) throw new Error('Invalid places response')
+      if (!ignore) setLivePlaces(data)
+    }).catch((error) => {
+      if (!ignore) setPlacesError(mapRequestError(error, '장소 목록을'))
+    })
     return () => { ignore = true }
-  }, [])
+  }, [placesAttempt, usePreview])
+
+  useEffect(() => {
+    if (!isLive || selectedPlaceId == null || !isFloor) return
+    let ignore = false
+    request(`/api/places/${selectedPlaceId}/floor-plan`)
+      .then((data) => { if (!ignore) setLiveFloor({ placeId: selectedPlaceId, attempt: floorAttempt, data }) })
+      .catch((error) => {
+        if (!ignore) setLiveFloor({ placeId: selectedPlaceId, attempt: floorAttempt, error: mapRequestError(error, '평면도를') })
+      })
+    return () => { ignore = true }
+  }, [floorAttempt, isLive, isFloor, selectedPlaceId])
 
   useEffect(() => {
     if (!isLive || selectedPlaceId == null) return
-
     let ignore = false
-    if (isFloor) {
-      request(`/api/places/${selectedPlaceId}/floor-plan`)
-        .then((data) => { if (!ignore) setLiveFloor({ placeId: selectedPlaceId, data }) })
-        .catch(() => { if (!ignore) setLiveFloor({ placeId: selectedPlaceId, data: null }) })
-    }
     request(`/api/posts?placeId=${selectedPlaceId}`)
-      .then((data) => { if (!ignore) setLiveReports({ placeId: selectedPlaceId, data: Array.isArray(data) ? data : [] }) })
-      .catch(() => { if (!ignore) setLiveReports({ placeId: selectedPlaceId, data: [] }) })
+      .then((data) => {
+        if (!Array.isArray(data)) throw new Error('Invalid reports response')
+        if (!ignore) setLiveReports({ placeId: selectedPlaceId, attempt: reportsAttempt, data })
+      })
+      .catch((error) => {
+        if (!ignore) setLiveReports({ placeId: selectedPlaceId, attempt: reportsAttempt, error: mapRequestError(error, '신고 목록을') })
+      })
     return () => { ignore = true }
-  }, [isLive, isFloor, selectedPlaceId])
+  }, [isLive, reportsAttempt, selectedPlaceId])
 
   const roomsById = useMemo(() => new Map(schoolMapPreviewData.rooms.map((room) => [room.id, room])), [])
   const selectedPlaceReports = useMemo(
     () => isLive
-      ? (liveReports?.placeId === selectedPlaceId ? (liveReports?.data ?? []) : [])
+      ? (reportsResult?.data ?? [])
       : mapReportPreviewData.filter((report) => roomsById.get(report.room_id)?.place_id === selectedPlaceId),
-    [isLive, liveReports, roomsById, selectedPlaceId],
+    [isLive, reportsResult, roomsById, selectedPlaceId],
   )
   const activePlaceReports = useMemo(() => selectedPlaceReports.filter(isActiveReport), [selectedPlaceReports])
   const roomCounts = useMemo(() => {
@@ -218,6 +250,10 @@ function SchoolMapPage() {
   )
 
   function changePlace(placeId) {
+    if (placeId !== selectedPlaceId) {
+      setLiveFloor(null)
+      setLiveReports(null)
+    }
     setSelectedPlace({ id: placeId, isLive })
     setSelectedRoom(null)
     setSelectedStatus('all')
@@ -231,8 +267,21 @@ function SchoolMapPage() {
   return (
     <SchoolMapLayout>
       <SchoolMapContent>
-        <FloorPlan floorPlaces={floorPlaces} quickPlaces={quickPlaces} selectedPlaceId={selectedPlaceId} onPlaceChange={changePlace} roomCounts={roomCounts} selectedRoom={roomSelection?.id} onRoomSelect={selectRoom} usePreview={!isLive} floorResult={floorResult} />
-        <ReportList reports={placeReports} selectedStatus={selectedStatus} onStatusChange={setSelectedStatus} />
+        <FloorPlan
+          floorPlaces={floorPlaces} quickPlaces={quickPlaces} selectedPlaceId={selectedPlaceId}
+          onPlaceChange={changePlace} roomCounts={roomCounts} selectedRoom={roomSelection?.id}
+          onRoomSelect={selectRoom} usePreview={usePreview} floorResult={floorResult}
+          placesLoading={placesLoading} placesError={placesError}
+          onRetryPlaces={() => { setPlacesError(''); setPlacesAttempt((attempt) => attempt + 1) }}
+          onRetryFloor={() => setFloorAttempt((attempt) => attempt + 1)}
+        />
+        <ReportList
+          reports={placeReports} selectedStatus={selectedStatus} onStatusChange={setSelectedStatus}
+          isLoading={placesLoading || (isLive && selectedPlaceId != null && !reportsResult)}
+          errorMessage={placesError || reportsResult?.error}
+          onRetry={reportsResult?.error ? () => setReportsAttempt((attempt) => attempt + 1) : undefined}
+          emptyMessage={selectedPlaceId == null ? '조회할 장소가 없습니다.' : undefined}
+        />
       </SchoolMapContent>
     </SchoolMapLayout>
   )
