@@ -119,11 +119,17 @@ export default function FloorPlan({
   floorPlaces, quickPlaces, selectedPlaceId, selectedRoom, roomCounts, onPlaceChange, onRoomSelect,
   usePreview, floorResult, placesLoading, placesError, onRetryPlaces, onRetryFloor,
 }) {
-  const [zoom, setZoom] = useState(100)
   const frameRef = useRef(null)
   const places = [...floorPlaces, ...quickPlaces]
   const selectedPlace = places.find((place) => place.id === selectedPlaceId) ?? places[0]
   const [, building, floor] = buildingFloorPattern.exec(selectedPlace?.name ?? '') ?? []
+  const defaultZoom = building === '창의관' ? 125 : 100
+  const [zoomBuilding, setZoomBuilding] = useState(building)
+  const [zoom, setZoom] = useState(defaultZoom)
+  if (zoomBuilding !== building) {
+    setZoomBuilding(building)
+    setZoom(defaultZoom)
+  }
   const data = usePreview ? getPreviewFloorPlan(selectedPlaceId, building, floor) : floorResult?.data
   const validPlan = Number.isInteger(data?.gridCols) && data.gridCols > 0 &&
     Number.isInteger(data.gridRows) && data.gridRows > 0 && Array.isArray(data.rooms) &&
@@ -194,7 +200,7 @@ export default function FloorPlan({
         {hasFloorPlan && (
           <ZoomControls role="group" aria-label="평면도 확대 및 축소">
             <Chip type="button" aria-label="축소" disabled={zoom === minZoom} onClick={() => setZoom((value) => clampZoom((Math.ceil(Math.round(value) / zoomStep) - 1) * zoomStep))}>−</Chip>
-            <Chip type="button" aria-label={`현재 ${zoomLabel}%, 기본 크기로 되돌리기`} onClick={() => setZoom(100)}>{zoomLabel}%</Chip>
+            <Chip type="button" aria-label={`현재 ${zoomLabel}%, 기본 크기로 되돌리기`} onClick={() => setZoom(defaultZoom)}>{zoomLabel}%</Chip>
             <Chip type="button" aria-label="확대" disabled={zoom === maxZoom} onClick={() => setZoom((value) => clampZoom((Math.floor(Math.round(value) / zoomStep) + 1) * zoomStep))}>+</Chip>
           </ZoomControls>
         )}
