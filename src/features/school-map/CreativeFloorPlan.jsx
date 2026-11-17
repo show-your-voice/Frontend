@@ -28,10 +28,12 @@ const Title = styled.h2`
 `
 
 const CoordinateGrid = styled.div`
+  --cell-size: calc(100cqw / var(--room-columns));
+  --room-inset: calc(var(--cell-size) * 0.03);
   display: grid;
   align-self: center;
-  grid-template-columns: repeat(var(--plan-columns), minmax(0, 1fr));
-  grid-template-rows: repeat(${({ $rows }) => $rows}, calc(100cqw / var(--room-columns)));
+  grid-template-columns: repeat(var(--plan-columns), var(--cell-size));
+  grid-template-rows: repeat(${({ $rows }) => $rows}, var(--cell-size));
 `
 
 const RoomGroup = styled.span`
@@ -40,7 +42,7 @@ const RoomGroup = styled.span`
   height: 100%;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: repeat(2, minmax(0, 1fr));
-  font-size: clamp(5px, 1.2cqw, 10px);
+  font-size: calc(var(--cell-size) * 0.18);
 
   > span { display: grid; place-items: center; padding-inline: 2px; }
   > :first-child { box-shadow: inset -1px 0 ${({ theme }) => theme.schoolMap.color.accent}; font-size: 0.8em; }
@@ -51,10 +53,9 @@ const Room = styled.button`
   position: relative;
   display: grid;
   box-sizing: border-box;
-  width: 100%;
-  height: 100%;
   min-width: 0;
   min-height: 0;
+  margin: ${({ $passage }) => $passage ? '0' : 'var(--room-inset)'};
   padding: ${({ $grouped }) => $grouped ? '0' : 'clamp(0px, 0.3cqw, 3px)'};
   overflow: hidden;
   place-items: center;
@@ -63,7 +64,7 @@ const Room = styled.button`
   background: ${({ theme, $passage }) => $passage ? theme.schoolMap.color.passage : theme.schoolMap.color.surface};
   color: inherit;
   font: inherit;
-  font-size: clamp(6px, 1.6cqw, ${({ theme }) => theme.schoolMap.font.caption});
+  font-size: calc(var(--cell-size) * 0.23);
   font-weight: ${({ theme }) => theme.schoolMap.font.labelWeight};
   line-height: 1.15;
   text-align: center;
@@ -75,24 +76,33 @@ const Room = styled.button`
   &:focus-visible { outline: 2px solid ${({ theme }) => theme.schoolMap.color.focus}; outline-offset: 1px; }
 `
 
+const reportBadgeScale = { low: 0.34, mid: 0.4, high: 0.46 }
+
 const Count = styled.span`
+  --badge-size: calc(var(--cell-size) * ${({ $level }) => reportBadgeScale[$level]});
   position: absolute;
-  top: 2px;
-  right: 3px;
-  min-width: 16px;
-  padding: 0 3px;
+  inset-block-start: 3px;
+  inset-inline-end: 3px;
+  display: grid;
+  place-items: center;
+  min-width: var(--badge-size);
+  min-height: var(--badge-size);
+  padding-inline: 0.2em;
   border-radius: 999px;
-  background: ${({ theme, $count }) => theme.schoolMap.color.reportCount[$count >= 5 ? 'high' : $count >= 3 ? 'mid' : 'low']};
+  background: ${({ theme, $level }) => theme.schoolMap.color.reportCount[$level]};
   color: ${({ theme }) => theme.schoolMap.color.text};
-  font-size: 11px;
+  font-size: calc(var(--badge-size) * 0.57);
 `
 
-function getRoomRegions(cells, gridRows, gridCols) {
+function getRoomRegions(cells, gridRows, gridCols, passage) {
   const valid = cells.filter((cell) => Number.isInteger(cell?.gridRow) && cell.gridRow >= 0 && cell.gridRow < gridRows &&
     Number.isInteger(cell.gridCol) && cell.gridCol >= 0 && cell.gridCol < gridCols)
   const occupied = new Map(valid.map((cell) => [`${cell.gridRow}:${cell.gridCol}`, cell]))
   const positions = [...occupied.values()]
   if (positions.length === 0) return []
+  if (!passage) {
+    return positions.map(({ gridRow, gridCol }) => ({ gridArea: `${gridRow + 1} / ${gridCol + 1}` }))
+  }
 
   const top = Math.min(...positions.map((cell) => cell.gridRow))
   const left = Math.min(...positions.map((cell) => cell.gridCol))
@@ -117,12 +127,14 @@ export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom,
       <Title>{title}</Title>
       <CoordinateGrid $rows={grid.gridRows}>
         {grid.rooms.flatMap(({ id, name, cells }) => {
-          const regions = getRoomRegions(cells, grid.gridRows, grid.gridCols)
-          const passage = ['복도', '로비'].includes(name.trim())
+          const spaceName = name.trim()
+          const passage = spaceName === '복도' || spaceName === '로비'
+          const regions = getRoomRegions(cells, grid.gridRows, grid.gridCols, passage)
           const labels = splitSupportRoom && name === '교육환경지원실' && cells.length === 1
             ? ['청소실무원 휴게실', '재료실', name]
             : null
           const count = roomCounts.get(id) ?? 0
+          const countLevel = count >= 5 ? 'high' : count >= 3 ? 'mid' : 'low'
 
           return regions.map((style, index) => (
             <Room
@@ -139,7 +151,7 @@ export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom,
               onClick={() => onRoomSelect(id)}
             >
               {index === 0 && (labels ? <RoomGroup>{labels.map((label) => <span key={label}>{label}</span>)}</RoomGroup> : name)}
-              {index === 0 && count > 0 && <Count $count={count} aria-label={`미해결 신고 ${count}건`}>{count}</Count>}
+              {index === 0 && count > 0 && <Count $level={countLevel} aria-label={`미해결 신고 ${count}건`}>{count}</Count>}
             </Room>
           ))
         })}

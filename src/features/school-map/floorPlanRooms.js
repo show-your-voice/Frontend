@@ -63,9 +63,6 @@ export function getPreviewFloorPlan(placeId, building, floor) {
     cells: [{ gridRow: index * 2, gridCol }],
   })))
   const corridorCells = Array.from({ length: gridCols - 1 }, (_, gridCol) => ({ gridRow: 1, gridCol }))
-  if (building === '창의관' && floor === '1') {
-    corridorCells.push({ gridRow: 0, gridCol: gridCols - 2 })
-  }
 
   return {
     gridRows: 3,
