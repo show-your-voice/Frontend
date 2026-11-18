@@ -1,5 +1,8 @@
+import process from 'node:process'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+
+const backend = process.env.DEV_BACKEND_URL ?? 'http://localhost:8080'
 
 export default defineConfig({
   plugins: [react()],
@@ -10,7 +13,8 @@ export default defineConfig({
     strictPort: true,
     // 개발 서버의 /api 요청을 백엔드로 넘긴다. 같은 출처라서 세션 쿠키가 그대로 오간다.
     proxy: {
-      '/api': 'http://localhost:8080',
+      '/api': backend,
+      '/images/posts': backend,
     },
   },
 })

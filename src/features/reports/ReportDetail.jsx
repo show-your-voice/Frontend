@@ -118,11 +118,6 @@ export default function ReportDetail({ report, onBack, onDelete, onAddCoAssignee
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   useEffect(() => { headingRef.current?.focus() }, [report.id])
 
-  function confirmDelete() {
-    setIsDeleteModalOpen(false)
-    onDelete(report.id)
-  }
-
   return (
     <Panel aria-labelledby="report-detail-heading">
       <BackButton type="button" onClick={onBack}>
@@ -160,7 +155,7 @@ export default function ReportDetail({ report, onBack, onDelete, onAddCoAssignee
         </Actions>
       )}
       {isDeleteModalOpen && (
-        <ReportDeleteModal onCancel={() => setIsDeleteModalOpen(false)} onConfirm={confirmDelete} />
+        <ReportDeleteModal onCancel={() => setIsDeleteModalOpen(false)} onConfirm={() => onDelete(report.id)} />
       )}
     </Panel>
   )

@@ -4,7 +4,7 @@ import styled from 'styled-components'
 import OutlineButton from '../../components/OutlineButton.jsx'
 import ReportCoAssigneeModal from './ReportCoAssigneeModal.jsx'
 import ReportDetail from './ReportDetail.jsx'
-import { fetchReportDetail } from './reportApi.js'
+import { deleteReport, fetchReportDetail } from './reportApi.js'
 
 const Page = styled.main`
   display: flex;
@@ -49,12 +49,14 @@ export default function ManagerReportDetailPage() {
       .then((nextReport) => {
         if (!ignore) setRequestState({ key: requestKey, report: nextReport, errorMessage: '' })
       })
-      .catch(() => {
+      .catch((error) => {
         if (!ignore) {
           setRequestState({
             key: requestKey,
             report: null,
-            errorMessage: '신고 상세를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
+            errorMessage: error.status === 404
+              ? '신고 상세를 찾지 못했어요.'
+              : '신고 상세를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.',
           })
         }
       })
@@ -66,6 +68,11 @@ export default function ManagerReportDetailPage() {
 
   function retryReport() {
     setRequestVersion((version) => version + 1)
+  }
+
+  async function deleteAndReturnToList(id) {
+    await deleteReport(id)
+    navigate('/manager/reports', { replace: true })
   }
 
   if (isLoading) {
@@ -93,8 +100,10 @@ export default function ManagerReportDetailPage() {
   return (
     <Page>
       <ReportDetail
+        key={report.id}
         report={report}
         onBack={() => navigate('/manager/reports')}
+        onDelete={deleteAndReturnToList}
         onAddCoAssignee={() => setIsCoAssigneeModalOpen(true)}
       />
       {isCoAssigneeModalOpen && (
