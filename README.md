@@ -25,12 +25,13 @@ Frontend foundation for Show Your Voice, built with Vite, React, JavaScript, and
 640px 이하에서는 이름·이메일 아래에 장소를 배치합니다. 빈 목록과 누락된
 정보도 표시하며, 긴 이메일·장소는 화면 너비 안에서 줄바꿈합니다.
 
-## 관리자 신고 전체 조회
+## 관리자 담당 신고 조회
 
 개발 서버에서 `/manager/reports`를 열면 관리자 헤더와 신고 목록을 확인할 수
-있습니다. 지도 영역은 아직 비워 두며, `GET /api/posts`를 쿼리 없이 호출해 전체
-신고를 한 번 조회합니다. 전체·접수·처리 중·처리 완료 필터는 조회된 결과를
-클라이언트에서 좁혀 보여 줍니다.
+있습니다. 기본으로 체크된 ‘내 담당만 보기’는 `GET /api/posts/assigned`로 로그인한
+선생님의 주 담당·공동 담당 신고를 표시합니다. 체크를 해제하면 `GET /api/posts`로
+전체 신고를 조회합니다. 전체·접수·처리 중·처리 완료 필터는 선택한 조회 범위에
+적용되며, 상세에서 목록으로 돌아올 때 조회 범위와 상태 필터가 유지됩니다.
 
 목록 카드를 선택하면 `/manager/reports/:reportId`로 이동해
 `GET /api/posts/{id}`의 신고 상세를 표시합니다. 기존 Student 상세 UI를 재사용하며
@@ -40,9 +41,8 @@ Frontend foundation for Show Your Voice, built with Vite, React, JavaScript, and
 열고, 한 명을 선택하면 `POST /api/posts/{id}/co-assignees`로 추가합니다. 성공 응답으로
 상세를 즉시 갱신하며 기존 담당자와 추가된 공동 담당자를 함께 표시합니다.
 
-현재 백엔드에는 담당자별 조회 계약이 없으므로 ‘내 담당만 보기’와 상태 변경은
-포함하지 않았습니다. 공동 담당자 삭제와 상세 삭제 실행도 이번 범위에 포함하지
-않았습니다. 목록과 상세는 로딩·오류·다시 시도 상태를 제공합니다.
+관리자 상세의 삭제 확인은 `DELETE /api/posts/{id}`를 호출합니다. 목록과 상세는
+로딩·오류·다시 시도 상태를 제공합니다.
 
 ## Stack
 

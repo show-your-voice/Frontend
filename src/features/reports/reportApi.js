@@ -61,8 +61,8 @@ function toReportDetail(report) {
   }
 }
 
-export async function fetchAllReports() {
-  const reports = await request('/api/posts')
+export async function fetchManagerReports({ assignedOnly }) {
+  const reports = await request(assignedOnly ? '/api/posts/assigned' : '/api/posts')
   return reports.map(toReportCard)
 }
 
