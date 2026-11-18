@@ -76,23 +76,37 @@ const Room = styled.button`
   &:focus-visible { outline: 2px solid ${({ theme }) => theme.schoolMap.color.focus}; outline-offset: 1px; }
 `
 
-const reportBadgeScale = { low: 0.34, mid: 0.4, high: 0.46 }
-
-const Count = styled.span`
-  --badge-size: calc(var(--cell-size) * ${({ $level }) => reportBadgeScale[$level]});
-  position: absolute;
-  inset-block-start: 3px;
-  inset-inline-end: 3px;
+const Pin = styled.button`
+  --pin-size: calc(var(--cell-size) * ${({ theme, $level }) => theme.schoolMap.pin[$level].scale});
+  z-index: 1;
   display: grid;
+  align-self: start;
+  justify-self: end;
   place-items: center;
-  min-width: var(--badge-size);
-  min-height: var(--badge-size);
-  padding-inline: 0.2em;
+  width: var(--pin-size);
+  height: var(--pin-size);
+  padding: 0;
+  border: calc(var(--pin-size) * 0.08) solid ${({ theme }) => theme.schoolMap.color.surface};
   border-radius: 999px;
   background: ${({ theme, $level }) => theme.schoolMap.color.reportCount[$level]};
-  color: ${({ theme }) => theme.schoolMap.color.text};
-  font-size: calc(var(--badge-size) * 0.57);
+  color: ${({ theme, $level }) => theme.schoolMap.pin[$level].text};
+  font: inherit;
+  font-size: calc(var(--pin-size) * 0.45);
+  font-weight: ${({ $level }) => $level === 'high' ? 700 : 500};
+  line-height: 1;
+  cursor: pointer;
+  translate: 35% -35%;
+
+  &:focus-visible { outline: 2px solid ${({ theme }) => theme.schoolMap.color.focus}; outline-offset: 2px; }
 `
+
+function getPinArea(cells, gridRows, gridCols) {
+  cells = cells.filter((cell) => cell.gridRow >= 0 && cell.gridRow < gridRows && cell.gridCol >= 0 && cell.gridCol < gridCols)
+  const top = Math.min(...cells.map((cell) => cell.gridRow))
+  const topCols = cells.filter((cell) => cell.gridRow === top).map((cell) => cell.gridCol)
+  const left = Math.min(...topCols)
+  return `${top + 1} / ${left + 1} / span 1 / span ${Math.max(...topCols) - left + 1}`
+}
 
 function getRoomRegions(cells, gridRows, gridCols, passage) {
   const valid = cells.filter((cell) => Number.isInteger(cell?.gridRow) && cell.gridRow >= 0 && cell.gridRow < gridRows &&
@@ -121,7 +135,7 @@ function getRoomRegions(cells, gridRows, gridCols, passage) {
   }))
 }
 
-export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom, roomCounts, selectedRoom, onRoomSelect }) {
+export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom, roomCounts, selectedRoom, onRoomSelect, onPinSelect }) {
   return (
     <Canvas $count={grid.gridCols} $zoom={zoom} aria-label={`${title} 평면도`}>
       <Title>{title}</Title>
@@ -136,7 +150,7 @@ export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom,
           const count = roomCounts.get(id) ?? 0
           const countLevel = count >= 5 ? 'high' : count >= 3 ? 'mid' : 'low'
 
-          return regions.map((style, index) => (
+          const rooms = regions.map((style, index) => (
             <Room
               key={`${id}:${style.gridArea}`}
               data-area-id={id}
@@ -148,12 +162,26 @@ export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom,
               aria-label={name}
               tabIndex={index === 0 ? undefined : -1}
               aria-pressed={selectedRoom === id}
-              onClick={() => onRoomSelect(id)}
+              onClick={() => onRoomSelect(id, name)}
             >
               {index === 0 && (labels ? <RoomGroup>{labels.map((label) => <span key={label}>{label}</span>)}</RoomGroup> : name)}
-              {index === 0 && count > 0 && <Count $level={countLevel} aria-label={`미해결 신고 ${count}건`}>{count}</Count>}
             </Room>
           ))
+          if (count === 0 || regions.length === 0) return rooms
+
+          return [...rooms, (
+            <Pin
+              key={`${id}:pin`}
+              $level={countLevel}
+              style={{ gridArea: getPinArea(cells, grid.gridRows, grid.gridCols) }}
+              type="button"
+              aria-label={`${name} 미해결 신고 ${count}건`}
+              aria-pressed={selectedRoom === id}
+              onClick={() => onPinSelect(id)}
+            >
+              {count}
+            </Pin>
+          )]
         })}
       </CoordinateGrid>
     </Canvas>

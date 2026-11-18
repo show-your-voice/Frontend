@@ -116,7 +116,7 @@ function clampZoom(value) {
 }
 
 export default function FloorPlan({
-  floorPlaces, quickPlaces, selectedPlaceId, selectedRoom, roomCounts, onPlaceChange, onRoomSelect,
+  floorPlaces, quickPlaces, selectedPlaceId, selectedRoom, roomCounts, onPlaceChange, onRoomSelect, onPinSelect,
   usePreview, floorResult, placesLoading, placesError, onRetryPlaces, onRetryFloor,
 }) {
   const frameRef = useRef(null)
@@ -189,6 +189,7 @@ export default function FloorPlan({
               roomCounts={roomCounts}
               selectedRoom={selectedRoom}
               onRoomSelect={onRoomSelect}
+              onPinSelect={onPinSelect}
             />
           ) : (
             <EmptyPlan>
