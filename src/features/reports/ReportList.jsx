@@ -28,11 +28,20 @@ const Panel = styled.section`
   }
 `
 
+const HeadingRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: ${({ theme }) => theme.space[2]};
+  margin-bottom: ${({ theme }) => theme.space[4]};
+`
+
 const Heading = styled.h2`
   display: flex;
   align-items: baseline;
   gap: ${({ theme }) => theme.space[2]};
-  margin: 0 0 ${({ theme }) => theme.space[4]};
+  margin: 0;
   color: ${({ theme }) => theme.report.color.title};
   font-size: 18px;
   font-weight: 500;
@@ -84,6 +93,7 @@ const StateMessage = styled.p`
 export default function ReportList({
   reports,
   title = '불편 신고',
+  headingAction,
   selectedStatus = 'all',
   onStatusChange,
   onSelectReport,
@@ -111,9 +121,12 @@ export default function ReportList({
 
   return (
     <Panel aria-labelledby="report-list-heading">
-      <Heading id="report-list-heading" ref={headingRef} tabIndex={-1}>
-        {title} <Count aria-live="polite">{visibleReports.length}</Count>
-      </Heading>
+      <HeadingRow>
+        <Heading id="report-list-heading" ref={headingRef} tabIndex={-1}>
+          {title} <Count aria-live="polite">{visibleReports.length}</Count>
+        </Heading>
+        {headingAction}
+      </HeadingRow>
       <Filters role="group" aria-label="처리 상태 필터">
         {filters.map((filter) => (
           <FilterChip

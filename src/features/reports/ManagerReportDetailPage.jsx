@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import styled from 'styled-components'
 import OutlineButton from '../../components/OutlineButton.jsx'
 import ReportCoAssigneeModal from './ReportCoAssigneeModal.jsx'
@@ -33,7 +33,9 @@ const StatePanel = styled.section`
 
 export default function ManagerReportDetailPage() {
   const navigate = useNavigate()
+  const { search } = useLocation()
   const { reportId } = useParams()
+  const listLocation = { pathname: '/manager/reports', search }
   const [requestVersion, setRequestVersion] = useState(0)
   const requestKey = `${reportId}:${requestVersion}`
   const [requestState, setRequestState] = useState({ key: '', report: null, errorMessage: '' })
@@ -72,7 +74,7 @@ export default function ManagerReportDetailPage() {
 
   async function deleteAndReturnToList(id) {
     await deleteReport(id)
-    navigate('/manager/reports', { replace: true })
+    navigate(listLocation, { replace: true })
   }
 
   if (isLoading) {
@@ -91,7 +93,7 @@ export default function ManagerReportDetailPage() {
         <StatePanel role="alert">
           <p>{errorMessage || '신고 상세를 찾지 못했어요.'}</p>
           <OutlineButton onClick={retryReport}>다시 시도</OutlineButton>
-          <OutlineButton onClick={() => navigate('/manager/reports')}>목록으로</OutlineButton>
+          <OutlineButton onClick={() => navigate(listLocation)}>목록으로</OutlineButton>
         </StatePanel>
       </Page>
     )
@@ -102,7 +104,7 @@ export default function ManagerReportDetailPage() {
       <ReportDetail
         key={report.id}
         report={report}
-        onBack={() => navigate('/manager/reports')}
+        onBack={() => navigate(listLocation)}
         onDelete={deleteAndReturnToList}
         onAddCoAssignee={() => setIsCoAssigneeModalOpen(true)}
       />

@@ -15,6 +15,6 @@ export function logout() {
   return request('/api/auth/logout', { method: 'POST' })
 }
 
-export function fetchMe() {
-  return request('/api/users/me')
+export function fetchSession() {
+  return request('/api/users/me/session')
 }

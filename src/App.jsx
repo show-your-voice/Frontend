@@ -4,7 +4,7 @@ import styled from 'styled-components'
 import { ApiError, request } from './api/client.js'
 import Header from './components/Header.jsx'
 import OutlineButton from './components/OutlineButton.jsx'
-import { fetchMe, logout } from './features/auth/authApi.js'
+import { fetchSession, logout } from './features/auth/authApi.js'
 import LoginForm from './features/auth/LoginForm.jsx'
 import SignupForm from './features/auth/SignupForm.jsx'
 import ManagerInfoPage from './features/managers/ManagerInfoPage.jsx'
@@ -14,7 +14,7 @@ import ReportDetail from './features/reports/ReportDetail.jsx'
 import ReportForm from './features/reports/ReportForm.jsx'
 import ReportList from './features/reports/ReportList.jsx'
 import ManagerReportDetailPage from './features/reports/ManagerReportDetailPage.jsx'
-import { fetchAllReports } from './features/reports/reportApi.js'
+import { fetchManagerReports } from './features/reports/reportApi.js'
 import { mapReportPreviewData, reportDetailPreviewData, reportPreviewData } from './features/reports/reportPreviewData.js'
 
 const ReportPage = styled.main`
@@ -65,13 +65,56 @@ const PendingMapRegion = styled.div`
   }
 `
 
+const AssignedReportsToggle = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.space[2]};
+  min-height: 44px;
+  color: ${({ theme }) => theme.report.color.body};
+  font-size: ${({ theme }) => theme.report.font.mobileSmall};
+  white-space: nowrap;
+  cursor: pointer;
+
+  input {
+    appearance: none;
+    display: grid;
+    place-items: center;
+    width: ${({ theme }) => theme.space[5]};
+    height: ${({ theme }) => theme.space[5]};
+    margin: 0;
+    border: 1px solid ${({ theme }) => theme.report.color.accent};
+    border-radius: ${({ theme }) => theme.radius.full};
+    cursor: inherit;
+  }
+
+  input:checked { background: ${({ theme }) => theme.report.color.accent}; }
+  input:checked::after {
+    content: '';
+    width: 8px;
+    height: 5px;
+    border: solid ${({ theme }) => theme.report.color.surface};
+    border-width: 0 0 2px 2px;
+    transform: translateY(-1px) rotate(-45deg);
+  }
+  input:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.report.color.focus};
+    outline-offset: 2px;
+  }
+
+  @media (forced-colors: active) {
+    input { appearance: auto; }
+    input:checked::after { content: none; }
+  }
+`
+
 function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
   function handleLogin(user) {
     const next = searchParams.get('next') ?? ''
-    const managerPath = /^\/manager\/reports(?:\/\d+)?$/.test(next) ? next : '/manager/reports'
+    const [nextPath] = next.split('?')
+    const managerPath = /^\/manager\/reports(?:\/\d+)?\/?$/.test(nextPath) ? next : '/manager/reports'
     const home = user.role === 'TEACHER' ? managerPath : '/'
     navigate(next === '/managers' ? next : home, { replace: true })
   }
@@ -125,10 +168,11 @@ function HeaderLayout() {
 
 async function loadSession({ request }) {
   try {
-    return await fetchMe()
+    return await fetchSession()
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
-      const next = new URL(request.url).pathname
+      const { pathname, search } = new URL(request.url)
+      const next = pathname + search
       throw redirect(`/login?${new URLSearchParams({ next })}`)
     }
     throw error
@@ -336,35 +380,35 @@ function SchoolMapContentPage({ usePreview }) {
 
 function ManagerReportsPage() {
   const navigate = useNavigate()
-  const [reports, setReports] = useState([])
-  const [selectedStatus, setSelectedStatus] = useState('all')
+  const [searchParams, setSearchParams] = useSearchParams()
   const [requestVersion, setRequestVersion] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const [errorMessage, setErrorMessage] = useState('')
+  const [result, setResult] = useState(null)
+  const assignedOnly = searchParams.get('scope') !== 'all'
+  const statusParam = searchParams.get('status')
+  const selectedStatus = ['received', 'inProgress', 'completed'].includes(statusParam) ? statusParam : 'all'
+  const currentResult = result?.assignedOnly === assignedOnly && result.version === requestVersion ? result : null
 
   useEffect(() => {
     let ignore = false
 
-    fetchAllReports()
-      .then((nextReports) => {
-        if (!ignore) setReports(nextReports)
+    fetchManagerReports({ assignedOnly })
+      .then((reports) => {
+        if (!ignore) setResult({ assignedOnly, version: requestVersion, reports })
       })
-      .catch(() => {
-        if (!ignore) setErrorMessage('신고 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.')
-      })
-      .finally(() => {
-        if (!ignore) setIsLoading(false)
+      .catch((error) => {
+        if (!ignore) setResult({ assignedOnly, version: requestVersion, errorMessage: mapRequestError(error, '신고 목록을') })
       })
 
     return () => {
       ignore = true
     }
-  }, [requestVersion])
+  }, [assignedOnly, requestVersion])
 
-  function retryReports() {
-    setIsLoading(true)
-    setErrorMessage('')
-    setRequestVersion((version) => version + 1)
+  function updateFilter(name, value) {
+    const next = new URLSearchParams(searchParams)
+    if (value == null) next.delete(name)
+    else next.set(name, value)
+    setSearchParams(next, { replace: true })
   }
 
   return (
@@ -372,15 +416,25 @@ function ManagerReportsPage() {
       <SchoolMapContent>
         <PendingMapRegion aria-hidden="true" />
         <ReportList
-          reports={reports}
-          title="전체 불편 신고"
+          reports={currentResult?.reports ?? []}
+          title={assignedOnly ? '내 담당 신고' : '전체 불편 신고'}
+          headingAction={(
+            <AssignedReportsToggle>
+              <input
+                type="checkbox"
+                checked={assignedOnly}
+                onChange={(event) => updateFilter('scope', event.target.checked ? null : 'all')}
+              />
+              내 담당만 보기
+            </AssignedReportsToggle>
+          )}
           selectedStatus={selectedStatus}
-          onStatusChange={setSelectedStatus}
-          onSelectReport={(report) => navigate(`/manager/reports/${report.id}`)}
-          isLoading={isLoading}
-          errorMessage={errorMessage}
-          onRetry={retryReports}
-          emptyMessage="조회된 신고가 없어요."
+          onStatusChange={(status) => updateFilter('status', status === 'all' ? null : status)}
+          onSelectReport={(report) => navigate({ pathname: `/manager/reports/${report.id}`, search: searchParams.toString() })}
+          isLoading={!currentResult}
+          errorMessage={currentResult?.errorMessage}
+          onRetry={() => setRequestVersion((version) => version + 1)}
+          emptyMessage={assignedOnly ? '내게 배정된 신고가 없어요.' : '조회된 신고가 없어요.'}
         />
       </SchoolMapContent>
     </SchoolMapLayout>
