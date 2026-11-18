@@ -73,12 +73,8 @@ const Empty = styled.p`
   font-size: ${({ theme }) => theme.auth.font.label};
 `
 
-function formatLocation(room) {
-  return `${room.building} ${room.floor}층`
-}
-
 function formatRoom(room) {
-  return `${room.name} · ${formatLocation(room)}`
+  return `${room.name} · ${room.placeName}`
 }
 
 function normalize(text) {
@@ -172,7 +168,7 @@ export default function ReportRoomField({ id, name, rooms, value, error, onChang
                   </svg>
                   <OptionText $active={index === activeIndex}>
                     <strong>{room.name}</strong>
-                    <span>{formatLocation(room)}</span>
+                    <span>{room.placeName}</span>
                   </OptionText>
                 </Option>
               ))}

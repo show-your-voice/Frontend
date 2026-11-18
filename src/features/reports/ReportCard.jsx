@@ -9,7 +9,7 @@ const Card = styled.article`
   border-radius: 16px;
   background: ${({ theme }) => theme.report.color.surface};
 
-  &:focus-within {
+  &:has(:focus-visible) {
     outline: 2px solid ${({ theme }) => theme.report.color.focus};
     outline-offset: 3px;
   }
