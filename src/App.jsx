@@ -1,34 +1,36 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Navigate, Outlet, RouterProvider, createBrowserRouter, redirect, useMatches, useNavigate, useOutletContext, useParams, useRevalidator, useSearchParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Navigate, Outlet, RouterProvider, createBrowserRouter, redirect, useLocation, useMatches, useNavigate, useParams, useRevalidator, useSearchParams } from 'react-router-dom'
 import styled from 'styled-components'
 import { ApiError, request } from './api/client.js'
 import Header from './components/Header.jsx'
 import OutlineButton from './components/OutlineButton.jsx'
+import Toast from './components/Toast.jsx'
 import { fetchSession, logout } from './features/auth/authApi.js'
 import LoginForm from './features/auth/LoginForm.jsx'
 import SignupForm from './features/auth/SignupForm.jsx'
 import ManagerInfoPage from './features/managers/ManagerInfoPage.jsx'
 import FloorPlan from './features/school-map/FloorPlan.jsx'
+import PlaceActionModal from './features/school-map/PlaceActionModal.jsx'
 import { schoolMapPreviewData, splitPlacesByDisplayType } from './features/school-map/schoolMapPreviewData.js'
-import ReportDetail from './features/reports/ReportDetail.jsx'
 import ReportForm from './features/reports/ReportForm.jsx'
 import ReportList from './features/reports/ReportList.jsx'
 import ManagerReportDetailPage from './features/reports/ManagerReportDetailPage.jsx'
-import { fetchManagerReports } from './features/reports/reportApi.js'
-import { mapReportPreviewData, reportDetailPreviewData, reportPreviewData } from './features/reports/reportPreviewData.js'
+import ReportDetailPanel from './features/reports/ReportDetailPanel.jsx'
+import { createReport, fetchManagerReports, fetchRooms } from './features/reports/reportApi.js'
+import { mapReportPreviewData } from './features/reports/reportPreviewData.js'
 
 const ReportPage = styled.main`
   display: flex;
   align-items: flex-start;
   justify-content: center;
   min-height: calc(100dvh - 64px);
-  padding: ${({ theme, $detail }) => $detail ? 0 : theme.report.layout.pagePadding};
-  background: ${({ theme, $detail }) => $detail ? theme.report.color.surface : theme.report.color.background};
+  padding: ${({ theme }) => theme.report.layout.pagePadding};
+  background: ${({ theme }) => theme.report.color.background};
   font-family: ${({ theme }) => theme.report.font.family};
   color-scheme: light;
 
   @media (max-width: ${({ theme }) => theme.report.layout.mobileBreakpoint}) {
-    padding: ${({ theme, $detail }) => $detail ? 0 : theme.space[3]};
+    padding: ${({ theme }) => theme.space[3]};
   }
 `
 
@@ -135,17 +137,12 @@ function HeaderLayout() {
   const sessionMatch = matches.find((match) => ['manager', 'manager-directory'].includes(match.id))
   const account = sessionMatch?.loaderData
   const isTeacher = account?.role === 'TEACHER'
-  const [reports, setReports] = useState(reportPreviewData)
   const [loggingOut, setLoggingOut] = useState(false)
 
   async function handleLogout() {
     setLoggingOut(true)
     await logout().catch(() => {})
     navigate('/login', { replace: true })
-  }
-
-  function deleteReport(reportId) {
-    setReports((currentReports) => currentReports.filter((report) => report.id !== reportId))
   }
 
   return (
@@ -161,7 +158,7 @@ function HeaderLayout() {
           onLogout={handleLogout}
         />
       )}
-      <Outlet context={{ reports, deleteReport }} />
+      <Outlet />
     </>
   )
 }
@@ -201,29 +198,38 @@ function SessionError() {
   )
 }
 
-function ReportDetailPage() {
-  const navigate = useNavigate()
-  const { reportId } = useParams()
-  const { reports, deleteReport } = useOutletContext()
-  const report = reports.find((item) => String(item.id) === reportId)
-
-  if (!report) return <Navigate to="/" replace />
-
-  function deleteAndReturnToList() {
-    deleteReport(report.id)
-    navigate('/', { replace: true })
-  }
-
-  return <ReportPage $detail><ReportDetail report={{ ...report, ...reportDetailPreviewData[report.id] }} onBack={() => navigate('/')} onDelete={deleteAndReturnToList} /></ReportPage>
-}
-
 function ReportCreatePage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [rooms, setRooms] = useState(null)
+  const initialRoomId = rooms?.some((room) => room.id === location.state?.roomId) ? location.state.roomId : undefined
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
-  return <ReportForm onCancel={() => navigate('/')} />
+  useEffect(() => {
+    let ignore = false
+    fetchRooms()
+      .then((data) => { if (!ignore) setRooms(data) })
+      .catch((error) => { if (!ignore) setSubmitError(mapRequestError(error, '실 목록을')) })
+    return () => { ignore = true }
+  }, [])
+
+  async function submitReport({ room, ...report }) {
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const created = await createReport({ ...report, room: rooms?.find((item) => item.id === room) })
+      navigate(`/reports/${created.id}`, { replace: true, state: { toast: '신고가 접수됐어요', placeId: created.place?.id, roomId: created.room?.id } })
+    } catch (error) {
+      setSubmitError(error instanceof ApiError && error.status === 401 ? '로그인 후 다시 시도해 주세요.' : error instanceof ApiError ? error.message : '신고를 등록하지 못했습니다.')
+      setSubmitting(false)
+    }
+  }
+
+  return <ReportForm key={rooms ? 'rooms' : 'loading'} rooms={rooms ?? []} initialRoomId={initialRoomId} submitting={submitting} submitError={submitError} onSubmit={submitReport} onCancel={() => navigate('/')} />
 }
 
-function toReportCard(report, room, place) {
+function toReportCard(report) {
   const statusByValue = {
     UNRESOLVED: { tone: 'received', label: '접수' },
     IN_PROGRESS: { tone: 'inProgress', label: '처리 중' },
@@ -236,7 +242,6 @@ function toReportCard(report, room, place) {
     description: report.content,
     date: (report.receivedAt ?? report.created_at)?.slice(0, 10) ?? '',
     author: report.authorName ?? report.author_name ?? '',
-    location: room && place ? `${place.name} · ${room.name}` : report.roomName ? `${report.placeName} · ${report.roomName}` : '',
     status: statusByValue[report.status?.code ?? report.status] ?? report.status,
   }
 }
@@ -258,6 +263,9 @@ function SchoolMapPage() {
 }
 
 function SchoolMapContentPage({ usePreview }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { reportId } = useParams()
   const [livePlaces, setLivePlaces] = useState(null)
   const [placesError, setPlacesError] = useState('')
   const [placesAttempt, setPlacesAttempt] = useState(0)
@@ -265,7 +273,9 @@ function SchoolMapContentPage({ usePreview }) {
   const [reportsAttempt, setReportsAttempt] = useState(0)
   const [liveFloor, setLiveFloor] = useState(null)
   const [liveReports, setLiveReports] = useState(null)
-  const [selectedRoom, setSelectedRoom] = useState(null)
+  const [selectedRoom, setSelectedRoom] = useState(() => location.state?.roomId ? { id: location.state.roomId, placeId: location.state.placeId, isLive: true } : null)
+  const [actionRoom, setActionRoom] = useState(null)
+  const [detailRoom, setDetailRoom] = useState(null)
   const [selectedPlace, setSelectedPlace] = useState(null)
   const [selectedStatus, setSelectedStatus] = useState('all')
   const places = usePreview ? schoolMapPreviewData.places : livePlaces
@@ -336,8 +346,8 @@ function SchoolMapContentPage({ usePreview }) {
   const placeReports = useMemo(
     () => (roomSelection === null ? activePlaceReports : selectedPlaceReports)
       .filter((report) => roomSelection === null || roomSelection.id === (report.roomId ?? report.room_id))
-      .map((report) => toReportCard(report, roomsById.get(report.room_id), currentPlace)),
-    [activePlaceReports, currentPlace, roomSelection, roomsById, selectedPlaceReports],
+      .map(toReportCard),
+    [activePlaceReports, roomSelection, selectedPlaceReports],
   )
 
   function changePlace(placeId) {
@@ -350,9 +360,15 @@ function SchoolMapContentPage({ usePreview }) {
     setSelectedStatus('all')
   }
 
-  function selectRoom(roomId) {
+  const showReportLocation = useCallback((report) => {
+    setSelectedPlace({ id: report.placeId, isLive: true })
+    setDetailRoom({ id: report.roomId, placeId: report.placeId })
+  }, [])
+
+  function selectPin(roomId) {
     setSelectedRoom(roomSelection?.id === roomId ? null : { id: roomId, placeId: selectedPlaceId, isLive })
     setSelectedStatus('all')
+    if (reportId) navigate('/')
   }
 
   return (
@@ -360,20 +376,43 @@ function SchoolMapContentPage({ usePreview }) {
       <SchoolMapContent>
         <FloorPlan
           floorPlaces={floorPlaces} quickPlaces={quickPlaces} selectedPlaceId={selectedPlaceId}
-          onPlaceChange={changePlace} roomCounts={roomCounts} selectedRoom={roomSelection?.id}
-          onRoomSelect={selectRoom} usePreview={usePreview} floorResult={floorResult}
+          onPlaceChange={changePlace} roomCounts={roomCounts} selectedRoom={reportId && detailRoom && detailRoom.placeId === selectedPlaceId ? detailRoom.id : roomSelection?.id}
+          onRoomSelect={(id, name) => setActionRoom({ id, name })} onPinSelect={selectPin} usePreview={usePreview} floorResult={floorResult}
           placesLoading={placesLoading} placesError={placesError}
           onRetryPlaces={() => { setPlacesError(''); setPlacesAttempt((attempt) => attempt + 1) }}
           onRetryFloor={() => setFloorAttempt((attempt) => attempt + 1)}
         />
-        <ReportList
-          reports={placeReports} selectedStatus={selectedStatus} onStatusChange={setSelectedStatus}
-          isLoading={placesLoading || (isLive && selectedPlaceId != null && !reportsResult)}
-          errorMessage={placesError || reportsResult?.error}
-          onRetry={reportsResult?.error ? () => setReportsAttempt((attempt) => attempt + 1) : undefined}
-          emptyMessage={selectedPlaceId == null ? '조회할 장소가 없습니다.' : undefined}
-        />
+        {reportId ? (
+          <ReportDetailPanel
+            reportId={reportId}
+            onLoad={showReportLocation}
+            onBack={() => navigate('/')}
+            onDeleted={() => {
+              setReportsAttempt((attempt) => attempt + 1)
+              navigate('/', { replace: true })
+            }}
+          />
+        ) : (
+          <ReportList
+            reports={placeReports} selectedStatus={selectedStatus} onStatusChange={setSelectedStatus}
+            onSelectReport={isLive ? (report) => navigate(`/reports/${report.id}`) : undefined}
+            isLoading={placesLoading || (isLive && selectedPlaceId != null && !reportsResult)}
+            errorMessage={placesError || reportsResult?.error}
+            onRetry={reportsResult?.error ? () => setReportsAttempt((attempt) => attempt + 1) : undefined}
+            emptyMessage={selectedPlaceId == null ? '조회할 장소가 없습니다.' : undefined}
+          />
+        )}
       </SchoolMapContent>
+      {location.state?.toast && (
+        <Toast message={location.state.toast} onClose={() => navigate(location.pathname, { replace: true })} />
+      )}
+      {actionRoom && (
+        <PlaceActionModal
+          roomName={actionRoom.name}
+          onClose={() => setActionRoom(null)}
+          onReport={() => navigate('/reports/new', { state: { roomId: isLive ? actionRoom.id : undefined } })}
+        />
+      )}
     </SchoolMapLayout>
   )
 }
@@ -447,7 +486,7 @@ const router = createBrowserRouter([
   {
     element: <HeaderLayout />,
     children: [
-      { path: '/reports/:reportId', element: <ReportDetailPage />, handle: { header: { navigationLabel: '불편 신고' } } },
+      { path: '/reports/:reportId', element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
       { path: '/reports/new', element: <ReportCreatePage />, handle: { header: { navigationLabel: '신고 작성' } } },
       { index: true, element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
       {

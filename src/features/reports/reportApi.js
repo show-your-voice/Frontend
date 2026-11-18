@@ -40,6 +40,8 @@ function toReportDetail(report) {
     improvement: report.improvement,
     category: report.category?.label ?? '',
     location: [report.place?.name, report.room?.name].filter(Boolean).join(' · '),
+    placeId: report.place?.id,
+    roomId: report.room?.id,
     author: report.author?.name ?? '',
     authorDisplay: toAuthorDisplay(report.author),
     primaryAssigneeId: report.assignee?.id ?? null,
@@ -69,6 +71,43 @@ export async function fetchManagerReports({ assignedOnly }) {
 export async function fetchReportDetail(reportId) {
   const report = await request(`/api/posts/${encodeURIComponent(reportId)}`)
   return toReportDetail(report)
+}
+
+const categoryCodes = {
+  '시설 고장': 'FACILITY',
+  네트워크: 'NETWORK',
+  청소: 'ENVIRONMENT',
+  기타: 'ETC',
+}
+
+export function fetchRooms() {
+  return request('/api/rooms')
+}
+
+async function fetchRoomCenter(room) {
+  const floorPlan = await request(`/api/places/${room.placeId}/floor-plan`).catch(() => null)
+  const cells = floorPlan?.rooms?.find((planRoom) => planRoom.id === room.id)?.cells ?? []
+  if (!cells.length || !floorPlan.gridRows || !floorPlan.gridCols) return { posX: 0.5, posY: 0.5 }
+
+  const average = (key) => cells.reduce((sum, cell) => sum + cell[key] + 0.5, 0) / cells.length
+  const round = (value) => Math.round(Math.min(Math.max(value, 0), 1) * 10000) / 10000
+  return { posX: round(average('gridCol') / floorPlan.gridCols), posY: round(average('gridRow') / floorPlan.gridRows) }
+}
+
+export async function createReport({ room, category, title, content, improvement, photos }) {
+  const [position, imageUrls] = await Promise.all([
+    fetchRoomCenter(room),
+    Promise.all(photos.map((photo) => {
+      const body = new FormData()
+      body.append('file', photo)
+      return request('/api/images/posts', { method: 'POST', body }).then((image) => image.imageUrl)
+    })),
+  ])
+
+  return request('/api/posts', {
+    method: 'POST',
+    body: { title, content, category: categoryCodes[category], roomId: room.id, ...position, improvement, imageUrls },
+  })
 }
 
 export async function fetchManagers() {

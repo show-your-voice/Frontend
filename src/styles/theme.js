@@ -18,6 +18,11 @@ export const theme = {
       focus: '#b32e75',
       reportCount: { low: pinkSecondary, mid: '#f57ab7', high: '#fa44a8' },
     },
+    pin: {
+      low: { scale: 0.4, text: '#a3165f' },
+      mid: { scale: 0.45, text: '#ffffff' },
+      high: { scale: 0.5, text: '#ffffff' },
+    },
     font: {
       family: fontFamily,
       heading: '24px',
@@ -219,6 +224,34 @@ export const theme = {
       mobileBreakpoint: '520px',
     },
     radius: { form: '28px' },
+  },
+  reportPanel: {
+    font: { body: '14px', small: '13px', mobileBody: '14px', mobileSmall: '13px' },
+    detail: {
+      width: 'none',
+      minHeight: '100%',
+      paddingBottom: '24px',
+      titleSize: '20px',
+      bodySize: '16px',
+      badgePadding: '4px',
+      backHeight: '20px',
+      headerGap: '20px',
+      infoLabelWidth: '80px',
+      mobileInfoLabelWidth: '80px',
+      infoRowGap: '10px',
+      imageIconSize: '20px',
+      improvementPadding: '14px',
+      deleteHeight: '40px',
+      timelineDot: '12px',
+      timelineLine: '2px',
+    },
+  },
+  toast: {
+    color: { surface: '#ffffff', text: '#fa44a8', shadow: '0 8px 24px rgba(46, 44, 45, 0.12)' },
+    gap: '10px',
+    padding: '14px 20px',
+    radius: '16px',
+    bottom: '40px',
   },
   reportForm: {
     color: {

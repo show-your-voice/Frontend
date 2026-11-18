@@ -25,12 +25,13 @@ function parseJson(text) {
 }
 
 export async function request(path, { method = 'GET', body } = {}) {
+  const isJson = body !== undefined && !(body instanceof FormData)
   const response = await fetch(apiUrl(path), {
     method,
     // 세션 쿠키(JSESSIONID)로 로그인 상태를 유지한다.
     credentials: 'include',
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: isJson ? { 'Content-Type': 'application/json' } : undefined,
+    body: isJson ? JSON.stringify(body) : body,
   })
   const data = parseJson(await response.text())
   if (!response.ok) throw new ApiError(response.status, data)
