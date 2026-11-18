@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Navigate, Outlet, RouterProvider, createBrowserRouter, useMatches, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, Outlet, RouterProvider, createBrowserRouter, redirect, useMatches, useNavigate, useOutletContext, useParams, useRevalidator, useSearchParams } from 'react-router-dom'
 import styled from 'styled-components'
 import { ApiError, request } from './api/client.js'
 import Header from './components/Header.jsx'
-import { logout } from './features/auth/authApi.js'
+import OutlineButton from './components/OutlineButton.jsx'
+import { fetchMe, logout } from './features/auth/authApi.js'
 import LoginForm from './features/auth/LoginForm.jsx'
 import SignupForm from './features/auth/SignupForm.jsx'
 import ManagerInfoPage from './features/managers/ManagerInfoPage.jsx'
-import { managerPreviewData } from './features/managers/managerPreviewData.js'
 import FloorPlan from './features/school-map/FloorPlan.jsx'
 import { schoolMapPreviewData, splitPlacesByDisplayType } from './features/school-map/schoolMapPreviewData.js'
 import ReportDetail from './features/reports/ReportDetail.jsx'
@@ -67,8 +67,16 @@ const PendingMapRegion = styled.div`
 
 function LoginPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
-  return <LoginForm onLogin={() => navigate('/', { replace: true })} onSignupClick={() => navigate('/signup')} />
+  function handleLogin(user) {
+    const next = searchParams.get('next') ?? ''
+    const managerPath = /^\/manager\/reports(?:\/\d+)?$/.test(next) ? next : '/manager/reports'
+    const home = user.role === 'TEACHER' ? managerPath : '/'
+    navigate(next === '/managers' ? next : home, { replace: true })
+  }
+
+  return <LoginForm onLogin={handleLogin} onSignupClick={() => navigate('/signup')} />
 }
 
 function SignupPage() {
@@ -81,6 +89,9 @@ function HeaderLayout() {
   const navigate = useNavigate()
   const matches = useMatches()
   const header = [...matches].reverse().find((match) => match.handle?.header)?.handle.header
+  const sessionMatch = matches.find((match) => ['manager', 'manager-directory'].includes(match.id))
+  const account = sessionMatch?.loaderData
+  const isTeacher = account?.role === 'TEACHER'
   const [reports, setReports] = useState(reportPreviewData)
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -96,17 +107,53 @@ function HeaderLayout() {
 
   return (
     <>
-      <Header
-        brand="너목보"
-        navigationLabel={header?.navigationLabel ?? '교내 지도'}
-        userName={header?.userName ?? '김학생'}
-        userRole={header?.userRole}
-        variant={header?.variant ?? 'user'}
-        loggingOut={loggingOut}
-        onLogout={handleLogout}
-      />
+      {(!sessionMatch || account) && (
+        <Header
+          brand="너목보"
+          navigationLabel={header?.navigationLabel ?? '교내 지도'}
+          userName={account?.name ?? '김학생'}
+          userRole={isTeacher ? '관리자' : undefined}
+          variant={isTeacher ? 'admin' : 'user'}
+          loggingOut={loggingOut}
+          onLogout={handleLogout}
+        />
+      )}
       <Outlet context={{ reports, deleteReport }} />
     </>
+  )
+}
+
+async function loadSession({ request }) {
+  try {
+    return await fetchMe()
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      const next = new URL(request.url).pathname
+      throw redirect(`/login?${new URLSearchParams({ next })}`)
+    }
+    throw error
+  }
+}
+
+async function loadManager(args) {
+  const user = await loadSession(args)
+  return user.role === 'TEACHER' ? user : redirect('/')
+}
+
+function SessionLoading() {
+  return <ReportPage><p role="status">로그인 정보를 확인하는 중이에요.</p></ReportPage>
+}
+
+function SessionError() {
+  const { revalidate, state } = useRevalidator()
+
+  return (
+    <ReportPage>
+      <section role="alert">
+        <p>로그인 정보를 확인하지 못했어요.</p>
+        <OutlineButton onClick={revalidate} disabled={state !== 'idle'}>다시 시도</OutlineButton>
+      </section>
+    </ReportPage>
   )
 }
 
@@ -326,7 +373,7 @@ function ManagerReportsPage() {
         <PendingMapRegion aria-hidden="true" />
         <ReportList
           reports={reports}
-          title="내 담당 신고"
+          title="전체 불편 신고"
           selectedStatus={selectedStatus}
           onStatusChange={setSelectedStatus}
           onSelectReport={(report) => navigate(`/manager/reports/${report.id}`)}
@@ -350,16 +397,26 @@ const router = createBrowserRouter([
       { path: '/reports/new', element: <ReportCreatePage />, handle: { header: { navigationLabel: '신고 작성' } } },
       { index: true, element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
       {
+        id: 'manager',
         path: '/manager/reports',
-        element: <ManagerReportsPage />,
-        handle: { header: { navigationLabel: '교내 지도', userName: '이선생', userRole: '관리자', variant: 'admin' } },
+        loader: loadManager,
+        HydrateFallback: SessionLoading,
+        ErrorBoundary: SessionError,
+        handle: { header: { navigationLabel: '불편 신고' } },
+        children: [
+          { index: true, element: <ManagerReportsPage /> },
+          { path: ':reportId', element: <ManagerReportDetailPage /> },
+        ],
       },
       {
-        path: '/manager/reports/:reportId',
-        element: <ManagerReportDetailPage />,
-        handle: { header: { navigationLabel: '교내 지도', userName: '이선생', userRole: '관리자', variant: 'admin' } },
+        id: 'manager-directory',
+        path: '/managers',
+        loader: loadSession,
+        HydrateFallback: SessionLoading,
+        ErrorBoundary: SessionError,
+        element: <ManagerInfoPage />,
+        handle: { header: { navigationLabel: '담당자 정보' } },
       },
-      { path: '/managers', element: <ManagerInfoPage managers={managerPreviewData} />, handle: { header: { navigationLabel: '담당자 정보' } } },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

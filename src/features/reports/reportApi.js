@@ -1,4 +1,4 @@
-import { request } from '../../api/client.js'
+import { apiUrl, request } from '../../api/client.js'
 
 const statusByCode = {
   UNRESOLVED: { tone: 'received', label: '접수' },
@@ -22,7 +22,7 @@ function toReportCard(report) {
     description: report.content,
     date: report.receivedAt?.slice(0, 10) ?? '',
     author: report.authorName ?? '',
-    location: report.placeName ?? '',
+    location: [report.placeName, report.roomName].filter(Boolean).join(' · '),
     status: toReportStatus(report.status),
   }
 }
@@ -39,7 +39,7 @@ function toReportDetail(report) {
     content: report.content,
     improvement: report.improvement,
     category: report.category?.label ?? '',
-    location: report.place?.name ?? '',
+    location: [report.place?.name, report.room?.name].filter(Boolean).join(' · '),
     author: report.author?.name ?? '',
     authorDisplay: toAuthorDisplay(report.author),
     primaryAssigneeId: report.assignee?.id ?? null,
@@ -55,7 +55,7 @@ function toReportDetail(report) {
     completedAt: report.resolvedAt?.slice(0, 10) ?? '',
     photos: (report.imageUrls ?? []).map((src, index) => ({
       id: `${report.id}-${index}`,
-      src,
+      src: apiUrl(src),
       alt: `${report.title} 첨부 사진 ${index + 1}`,
     })),
   }
@@ -72,7 +72,9 @@ export async function fetchReportDetail(reportId) {
 }
 
 export async function fetchManagers() {
-  return request('/api/managers')
+  const managers = await request('/api/managers')
+  if (!Array.isArray(managers)) throw new Error('담당자 목록 응답 형식이 올바르지 않습니다.')
+  return managers
 }
 
 export async function addReportCoAssignee(reportId, managerId) {
@@ -81,4 +83,8 @@ export async function addReportCoAssignee(reportId, managerId) {
     body: { managerId },
   })
   return toReportDetail(report)
+}
+
+export function deleteReport(reportId) {
+  return request(`/api/posts/${encodeURIComponent(reportId)}`, { method: 'DELETE' })
 }
