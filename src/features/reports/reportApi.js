@@ -18,6 +18,8 @@ function toReportStatus(status) {
 function toReportCard(report) {
   return {
     id: report.id,
+    placeName: report.placeName,
+    roomId: report.roomId,
     title: report.title,
     description: report.content,
     date: report.receivedAt?.slice(0, 10) ?? '',

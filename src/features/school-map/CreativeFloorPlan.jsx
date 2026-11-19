@@ -72,7 +72,6 @@ const Room = styled.button`
   cursor: pointer;
 
   &:hover { background: ${({ theme }) => theme.schoolMap.color.passage}; }
-  &[aria-pressed='true'] { background: ${({ theme }) => theme.schoolMap.color.selected}; }
   &:focus-visible { outline: 2px solid ${({ theme }) => theme.schoolMap.color.focus}; outline-offset: 1px; }
 `
 
@@ -135,7 +134,7 @@ function getRoomRegions(cells, gridRows, gridCols, passage) {
   }))
 }
 
-export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom, roomCounts, selectedRoom, onRoomSelect, onPinSelect }) {
+export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom, roomCounts, selectedRoom, onRoomSelect, onPinSelect, roomIdsByName }) {
   return (
     <Canvas $count={grid.gridCols} $zoom={zoom} aria-label={`${title} 평면도`}>
       <Title>{title}</Title>
@@ -177,7 +176,7 @@ export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom,
               type="button"
               aria-label={`${name} 미해결 신고 ${count}건`}
               aria-pressed={selectedRoom === id}
-              onClick={() => onPinSelect(id)}
+              onClick={() => onPinSelect(roomIdsByName?.get(name) ?? id)}
             >
               {count}
             </Pin>

@@ -117,26 +117,32 @@ function clampZoom(value) {
 
 export default function FloorPlan({
   floorPlaces, quickPlaces, selectedPlaceId, selectedRoom, roomCounts, onPlaceChange, onRoomSelect, onPinSelect,
-  usePreview, floorResult, placesLoading, placesError, onRetryPlaces, onRetryFloor,
+  usePreview, floorResult, placesLoading, placesError, onRetryPlaces, onRetryFloor, roomIdsByName, roomCountsByName,
 }) {
   const frameRef = useRef(null)
   const places = [...floorPlaces, ...quickPlaces]
   const selectedPlace = places.find((place) => place.id === selectedPlaceId) ?? places[0]
   const [, building, floor] = buildingFloorPattern.exec(selectedPlace?.name ?? '') ?? []
-  const defaultZoom = building === '창의관' ? 125 : 100
+  const isFloor = Boolean(building || (selectedPlace?.gridRows != null && selectedPlace?.gridCols != null))
+  const defaultZoom = 100
   const [zoomBuilding, setZoomBuilding] = useState(building)
   const [zoom, setZoom] = useState(defaultZoom)
   if (zoomBuilding !== building) {
     setZoomBuilding(building)
     setZoom(defaultZoom)
   }
-  const data = usePreview ? getPreviewFloorPlan(selectedPlaceId, building, floor) : floorResult?.data
+  const liveData = floorResult?.data
+  const livePlanValid = Number.isInteger(liveData?.gridCols) && liveData.gridCols > 0 &&
+    Number.isInteger(liveData?.gridRows) && liveData.gridRows > 0 && Array.isArray(liveData.rooms) &&
+    liveData.rooms.every((room) => room?.id != null && typeof room.name === 'string' && Array.isArray(room.cells))
+  const fallback = !usePreview && floorResult && (floorResult.error || liveData == null || (isFloor && !livePlanValid))
+  const data = usePreview || fallback ? getPreviewFloorPlan(selectedPlaceId, building, floor) : floorResult?.data
   const validPlan = Number.isInteger(data?.gridCols) && data.gridCols > 0 &&
     Number.isInteger(data.gridRows) && data.gridRows > 0 && Array.isArray(data.rooms) &&
     data.rooms.every((room) => room?.id != null && typeof room.name === 'string' && Array.isArray(room.cells))
   const hasFloorPlan = validPlan
   const title = building === '창의관' ? `${floor}층` : selectedPlace?.name
-  const expectsPlan = !usePreview && (building || (selectedPlace?.gridRows != null && selectedPlace?.gridCols != null))
+  const expectsPlan = !usePreview && isFloor
   const noGrid = data?.gridRows === null && data?.gridCols === null
   let emptyMessage = selectedPlace ? '표시할 평면도가 없습니다.' : '조회할 장소가 없습니다.'
   let retry
@@ -186,10 +192,11 @@ export default function FloorPlan({
               grid={data}
               splitSupportRoom={building === '창의관' && floor === '1'}
               zoom={zoom}
-              roomCounts={roomCounts}
-              selectedRoom={selectedRoom}
-              onRoomSelect={onRoomSelect}
+              roomCounts={fallback ? new Map(data.rooms.map((room) => [room.id, roomCountsByName.get(room.name) ?? 0])) : roomCounts}
+              selectedRoom={fallback ? null : selectedRoom}
+              onRoomSelect={fallback ? (_, name) => onRoomSelect(roomIdsByName.get(name), name) : onRoomSelect}
               onPinSelect={onPinSelect}
+              roomIdsByName={fallback ? roomIdsByName : undefined}
             />
           ) : (
             <EmptyPlan>
