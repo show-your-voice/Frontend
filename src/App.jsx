@@ -59,14 +59,6 @@ const SchoolMapContent = styled.div`
   @media (max-width: 980px) { height: auto; min-height: 100%; grid-template-columns: 1fr; overflow: visible; }
 `
 
-const PendingMapRegion = styled.div`
-  min-width: 0;
-
-  @media (max-width: 980px) {
-    display: none;
-  }
-`
-
 const AssignedReportsToggle = styled.label`
   display: inline-flex;
   align-items: center;
@@ -257,12 +249,15 @@ function mapRequestError(error, subject) {
 }
 
 function SchoolMapPage() {
+  const matches = useMatches()
   const [searchParams] = useSearchParams()
   const usePreview = searchParams.get('preview') === '1'
+  const isManager = matches.some((match) => match.id === 'manager' && match.data?.role === 'TEACHER')
+  if (isManager) return <ManagerReportsPage usePreview={usePreview} />
   return <SchoolMapContentPage key={String(usePreview)} usePreview={usePreview} />
 }
 
-function SchoolMapContentPage({ usePreview }) {
+function SchoolMapContentPage({ usePreview, renderReports }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { reportId } = useParams()
@@ -342,6 +337,20 @@ function SchoolMapContentPage({ usePreview }) {
     }
     return counts
   }, [activePlaceReports])
+  const roomIdsByName = useMemo(() => new Map(selectedPlaceReports.map((report) => {
+    const roomId = report.roomId ?? report.room_id
+    const roomName = report.roomName ?? roomsById.get(roomId)?.name
+    return [roomName, roomId]
+  }).filter(([name, id]) => name && id != null)), [roomsById, selectedPlaceReports])
+  const roomCountsByName = useMemo(() => {
+    const counts = new Map()
+    for (const report of activePlaceReports) {
+      const roomId = report.roomId ?? report.room_id
+      const roomName = report.roomName ?? roomsById.get(roomId)?.name
+      if (roomName) counts.set(roomName, (counts.get(roomName) ?? 0) + 1)
+    }
+    return counts
+  }, [activePlaceReports, roomsById])
   const roomSelection = selectedRoom?.placeId === selectedPlaceId && selectedRoom?.isLive === isLive ? selectedRoom : null
   const placeReports = useMemo(
     () => (roomSelection === null ? activePlaceReports : selectedPlaceReports)
@@ -377,12 +386,13 @@ function SchoolMapContentPage({ usePreview }) {
         <FloorPlan
           floorPlaces={floorPlaces} quickPlaces={quickPlaces} selectedPlaceId={selectedPlaceId}
           onPlaceChange={changePlace} roomCounts={roomCounts} selectedRoom={reportId && detailRoom && detailRoom.placeId === selectedPlaceId ? detailRoom.id : roomSelection?.id}
-          onRoomSelect={(id, name) => setActionRoom({ id, name })} onPinSelect={selectPin} usePreview={usePreview} floorResult={floorResult}
+          onRoomSelect={(id, name) => setActionRoom({ id: id ?? roomIdsByName.get(name), name })} onPinSelect={selectPin} usePreview={usePreview} floorResult={floorResult}
+          roomIdsByName={roomIdsByName} roomCountsByName={roomCountsByName}
           placesLoading={placesLoading} placesError={placesError}
           onRetryPlaces={() => { setPlacesError(''); setPlacesAttempt((attempt) => attempt + 1) }}
           onRetryFloor={() => setFloorAttempt((attempt) => attempt + 1)}
         />
-        {reportId ? (
+        {renderReports ? renderReports({ placeId: selectedPlaceId, placeName: currentPlace?.name, roomId: roomSelection?.id }) : reportId ? (
           <ReportDetailPanel
             reportId={reportId}
             onLoad={showReportLocation}
@@ -417,7 +427,7 @@ function SchoolMapContentPage({ usePreview }) {
   )
 }
 
-function ManagerReportsPage() {
+function ManagerReportsPage({ usePreview }) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [requestVersion, setRequestVersion] = useState(0)
@@ -451,11 +461,9 @@ function ManagerReportsPage() {
   }
 
   return (
-    <SchoolMapLayout>
-      <SchoolMapContent>
-        <PendingMapRegion aria-hidden="true" />
+    <SchoolMapContentPage usePreview={usePreview} renderReports={({ placeName, roomId }) => (
         <ReportList
-          reports={currentResult?.reports ?? []}
+          reports={(currentResult?.reports ?? []).filter((report) => report.placeName === placeName && (roomId == null || report.roomId === roomId))}
           title={assignedOnly ? '내 담당 신고' : '전체 불편 신고'}
           headingAction={(
             <AssignedReportsToggle>
@@ -475,8 +483,7 @@ function ManagerReportsPage() {
           onRetry={() => setRequestVersion((version) => version + 1)}
           emptyMessage={assignedOnly ? '내게 배정된 신고가 없어요.' : '조회된 신고가 없어요.'}
         />
-      </SchoolMapContent>
-    </SchoolMapLayout>
+    )} />
   )
 }
 
@@ -497,7 +504,7 @@ const router = createBrowserRouter([
         ErrorBoundary: SessionError,
         handle: { header: { navigationLabel: '불편 신고' } },
         children: [
-          { index: true, element: <ManagerReportsPage /> },
+          { index: true, element: <SchoolMapPage /> },
           { path: ':reportId', element: <ManagerReportDetailPage /> },
         ],
       },
