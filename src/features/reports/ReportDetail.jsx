@@ -113,7 +113,7 @@ const Actions = styled.div`
   padding-top: ${({ theme }) => theme.space[8]};
 `
 
-export default function ReportDetail({ report, onBack, onDelete, onAddCoAssignee }) {
+export default function ReportDetail({ report, onBack, onDelete, onAddCoAssignee, statusControls }) {
   const headingRef = useRef(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   useEffect(() => { headingRef.current?.focus() }, [report.id])
@@ -140,6 +140,7 @@ export default function ReportDetail({ report, onBack, onDelete, onAddCoAssignee
       </History>
       <Content>
         <ReportInfoList {...report} author={report.authorDisplay ?? report.author} onAddCoAssignee={onAddCoAssignee} />
+        {statusControls}
         <ReportAttachments photos={report.photos} />
         <Description>{report.content ?? report.description}</Description>
         {report.improvement && (

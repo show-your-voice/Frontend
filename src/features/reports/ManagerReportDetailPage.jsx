@@ -4,7 +4,8 @@ import styled from 'styled-components'
 import OutlineButton from '../../components/OutlineButton.jsx'
 import ReportCoAssigneeModal from './ReportCoAssigneeModal.jsx'
 import ReportDetail from './ReportDetail.jsx'
-import { deleteReport, fetchReportDetail } from './reportApi.js'
+import ReportStatusControl from './ReportStatusControl.jsx'
+import { changeReportStatus, deleteReport, fetchReportDetail } from './reportApi.js'
 
 const Page = styled.main`
   display: flex;
@@ -77,6 +78,17 @@ export default function ManagerReportDetailPage() {
     navigate(listLocation, { replace: true })
   }
 
+  async function saveStatus(status) {
+    const { status: savedStatus, startedAt, completedAt } = await changeReportStatus(reportId, status)
+    updateReport({ status: savedStatus, startedAt, completedAt })
+  }
+
+  function updateReport(changes) {
+    setRequestState((current) => current.key === requestKey
+      ? { ...current, report: { ...current.report, ...changes } }
+      : current)
+  }
+
   if (isLoading) {
     return (
       <Page>
@@ -104,6 +116,7 @@ export default function ManagerReportDetailPage() {
       <ReportDetail
         key={report.id}
         report={report}
+        statusControls={report.canChangeStatus && <ReportStatusControl currentStatus={report.status.code} onChange={saveStatus} />}
         onBack={() => navigate(listLocation)}
         onDelete={deleteAndReturnToList}
         onAddCoAssignee={() => setIsCoAssigneeModalOpen(true)}
@@ -112,8 +125,8 @@ export default function ManagerReportDetailPage() {
         <ReportCoAssigneeModal
           report={report}
           onCancel={() => setIsCoAssigneeModalOpen(false)}
-          onAdded={(updatedReport) => {
-            setRequestState({ key: requestKey, report: updatedReport, errorMessage: '' })
+          onAdded={({ coAssignees, canChangeStatus }) => {
+            updateReport({ coAssignees, canChangeStatus })
             setIsCoAssigneeModalOpen(false)
           }}
         />

@@ -1,15 +1,16 @@
 import { apiUrl, request } from '../../api/client.js'
 
-const statusByCode = {
-  UNRESOLVED: { tone: 'received', label: '접수' },
-  IN_PROGRESS: { tone: 'inProgress', label: '처리 중' },
-  RESOLVED: { tone: 'completed', label: '처리 완료' },
-}
+export const reportStatuses = [
+  { code: 'UNRESOLVED', tone: 'received', label: '접수' },
+  { code: 'IN_PROGRESS', tone: 'inProgress', label: '처리 중' },
+  { code: 'RESOLVED', tone: 'completed', label: '처리 완료' },
+]
 
 function toReportStatus(status) {
   const statusCode = status?.code ?? status
 
-  return statusByCode[statusCode] ?? {
+  return reportStatuses.find(({ code }) => code === statusCode) ?? {
+    code: statusCode,
     tone: 'received',
     label: status?.label ?? '접수',
   }
@@ -44,6 +45,7 @@ function toReportDetail(report) {
     roomId: report.room?.id,
     author: report.author?.name ?? '',
     authorDisplay: toAuthorDisplay(report.author),
+    canChangeStatus: report.canChangeStatus === true,
     primaryAssigneeId: report.assignee?.id ?? null,
     manager: report.assignee?.name ?? '',
     coAssignees: (report.coAssignees ?? []).map((manager) => ({
@@ -120,6 +122,14 @@ export async function addReportCoAssignee(reportId, managerId) {
   const report = await request(`/api/posts/${encodeURIComponent(reportId)}/co-assignees`, {
     method: 'POST',
     body: { managerId },
+  })
+  return toReportDetail(report)
+}
+
+export async function changeReportStatus(reportId, status) {
+  const report = await request(`/api/posts/${encodeURIComponent(reportId)}/status`, {
+    method: 'PATCH',
+    body: { status },
   })
   return toReportDetail(report)
 }
