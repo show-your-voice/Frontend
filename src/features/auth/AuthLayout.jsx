@@ -105,6 +105,7 @@ export default function AuthLayout({
   description,
   submitLabel,
   submitting = false,
+  submitDisabled = false,
   formError,
   footerText,
   footerActionLabel,
@@ -130,7 +131,7 @@ export default function AuthLayout({
               {formError}
             </FormError>
           )}
-          <Button type="submit" disabled={submitting} aria-busy={submitting}>{submitLabel}</Button>
+          <Button type="submit" disabled={submitting || submitDisabled} aria-busy={submitting}>{submitLabel}</Button>
           <Footer>
             {footerText}
             <Button variant="text" onClick={onFooterAction}>{footerActionLabel}</Button>
