@@ -5,7 +5,7 @@ export function apiUrl(path) {
   return `${API_BASE_URL}${path}`
 }
 
-// 서버 오류 응답 { code, message, errors: [{ field, reason }] }를 담는다.
+// 서버 오류 응답 { code, message, errors: [{ field, reason }], remainingAttempts? }를 담는다.
 export class ApiError extends Error {
   constructor(status, body) {
     super(body?.message ?? `요청이 실패했습니다. (${status})`)
@@ -13,6 +13,8 @@ export class ApiError extends Error {
     this.status = status
     this.code = body?.code
     this.fieldErrors = body?.errors ?? []
+    // 인증번호가 틀렸을 때(E002)만 남은 입력 기회가 온다.
+    this.remainingAttempts = body?.remainingAttempts
   }
 }
 

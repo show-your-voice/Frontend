@@ -1,10 +1,14 @@
+import { ApiError } from '../../api/client.js'
 import TextField from '../../components/TextField.jsx'
 import AuthLayout from './AuthLayout.jsx'
 import { signUp } from './authApi.js'
 import { LOGIN_ID_RULE, PASSWORD_RULE, signupErrorsFrom, validateSignup } from './authValidation.js'
+import EmailVerificationFields from './EmailVerificationFields.jsx'
 import useAuthForm from './useAuthForm.js'
+import useEmailVerification from './useEmailVerification.js'
 
 export default function SignupForm({ onSignup, onLoginClick }) {
+  const verification = useEmailVerification()
   const { values, errors, submitting, handleChange, handleSubmit } = useAuthForm(
     { email: '', loginId: '', name: '', password: '', passwordConfirm: '' },
     validateSignup,
@@ -12,10 +16,16 @@ export default function SignupForm({ onSignup, onLoginClick }) {
       try {
         onSignup(await signUp(form))
       } catch (error) {
+        // 인증 후 30분이 지나 서버가 인증을 받지 않으면(E005) 처음부터 다시 인증한다.
+        if (error instanceof ApiError && error.code === 'E005') verification.reset()
         return signupErrorsFrom(error)
       }
     },
   )
+  function handleEmailChange(event) {
+    handleChange(event)
+    verification.reset()
+  }
 
   return (
     <AuthLayout
@@ -23,22 +33,18 @@ export default function SignupForm({ onSignup, onLoginClick }) {
       description="학교 이메일(@dsm.hs.kr)로만 가입할 수 있어요."
       submitLabel="가입하기"
       submitting={submitting}
-      formError={errors.form}
+      submitDisabled={verification.status !== 'verified'}
+      formError={verification.errors.form ?? errors.form}
       footerText="이미 계정이 있나요?"
       footerActionLabel="로그인"
       onFooterAction={onLoginClick}
       onSubmit={handleSubmit}
     >
-      <TextField
-        id="signup-email"
-        name="email"
-        type="email"
-        label="이메일"
-        placeholder="이메일을 입력하세요"
-        autoComplete="email"
-        value={values.email}
-        onChange={handleChange}
-        error={errors.email}
+      <EmailVerificationFields
+        email={values.email}
+        emailError={errors.email}
+        onEmailChange={handleEmailChange}
+        verification={verification}
       />
       <TextField
         id="signup-login-id"
