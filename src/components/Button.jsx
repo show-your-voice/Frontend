@@ -43,6 +43,12 @@ const StyledButton = styled.button`
   white-space: nowrap;
   cursor: pointer;
   ${({ $variant }) => variants[$variant] ?? primary}
+  ${({ $size }) => $size === 'small' && css`
+    min-width: 0;
+    min-height: 32px;
+    padding: 0 14px;
+    font-size: ${({ theme }) => theme.auth.font.label};
+  `}
 
   &:focus-visible {
     outline: 2px solid ${({ theme }) => theme.auth.color.brand};
@@ -60,10 +66,11 @@ export default function Button({
   variant = 'primary',
   fullWidth = variant === 'primary',
   type = 'button',
+  size,
   ...props
 }) {
   return (
-    <StyledButton type={type} $variant={variant} $fullWidth={fullWidth} {...props}>
+    <StyledButton type={type} $variant={variant} $fullWidth={fullWidth} $size={size} {...props}>
       {children}
     </StyledButton>
   )
