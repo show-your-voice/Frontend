@@ -2,8 +2,6 @@ export const REPORT_CATEGORIES = ['시설 고장', '네트워크', '청소', '�
 
 export const MAX_REPORT_PHOTOS = 5
 
-export const MAX_ROOM_OPTIONS = 4
-
 export function validateReport({ room, category, title, content }) {
   const errors = {}
   if (!room) errors.room = '실을 선택해 주세요.'

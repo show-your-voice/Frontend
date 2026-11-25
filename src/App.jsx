@@ -59,6 +59,47 @@ const SchoolMapContent = styled.div`
   @media (max-width: 980px) { height: auto; min-height: 100%; grid-template-columns: 1fr; overflow: visible; }
 `
 
+const PickRoomGuide = styled.div`
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.toast.gap};
+  padding: 8px 8px 8px 20px;
+  border-radius: ${({ theme }) => theme.toast.radius};
+  background: ${({ theme }) => theme.toast.color.surface};
+  box-shadow: ${({ theme }) => theme.toast.color.shadow};
+  color: ${({ theme }) => theme.toast.color.text};
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transform: translateX(-50%);
+
+  button {
+    padding: 4px 12px;
+    border: 0;
+    border-radius: ${({ theme }) => theme.radius.full};
+    background: ${({ theme }) => theme.reportForm.color.chip};
+    color: ${({ theme }) => theme.reportForm.color.chipText};
+    font: inherit;
+    cursor: pointer;
+  }
+
+  button:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.toast.color.text};
+    outline-offset: 2px;
+  }
+
+  @media (max-width: 600px) {
+    right: 12px;
+    left: 12px;
+    justify-content: space-between;
+    transform: none;
+  }
+`
+
 const AssignedReportsToggle = styled.label`
   display: inline-flex;
   align-items: center;
@@ -194,7 +235,9 @@ function ReportCreatePage() {
   const navigate = useNavigate()
   const location = useLocation()
   const [rooms, setRooms] = useState(null)
-  const initialRoomId = rooms?.some((room) => room.id === location.state?.roomId) ? location.state.roomId : undefined
+  const [pickedRoomId, setPickedRoomId] = useState(null)
+  const [pickingRoom, setPickingRoom] = useState(false)
+  const room = rooms?.find((item) => item.id === (pickedRoomId ?? location.state?.roomId))
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
@@ -206,11 +249,11 @@ function ReportCreatePage() {
     return () => { ignore = true }
   }, [])
 
-  async function submitReport({ room, ...report }) {
+  async function submitReport(report) {
     setSubmitting(true)
     setSubmitError('')
     try {
-      const created = await createReport({ ...report, room: rooms?.find((item) => item.id === room) })
+      const created = await createReport({ ...report, room })
       navigate(`/reports/${created.id}`, { replace: true, state: { toast: '신고가 접수됐어요', placeId: created.place?.id, roomId: created.room?.id } })
     } catch (error) {
       setSubmitError(error instanceof ApiError && error.status === 401 ? '로그인 후 다시 시도해 주세요.' : error instanceof ApiError ? error.message : '신고를 등록하지 못했습니다.')
@@ -218,7 +261,19 @@ function ReportCreatePage() {
     }
   }
 
-  return <ReportForm key={rooms ? 'rooms' : 'loading'} rooms={rooms ?? []} initialRoomId={initialRoomId} submitting={submitting} submitError={submitError} onSubmit={submitReport} onCancel={() => navigate('/')} />
+  function pickRoom(roomId) {
+    setPickedRoomId(roomId)
+    setPickingRoom(false)
+  }
+
+  return (
+    <>
+      <div hidden={pickingRoom}>
+        <ReportForm room={room} submitting={submitting} submitError={submitError} onPickRoom={() => setPickingRoom(true)} onSubmit={submitReport} onCancel={() => navigate('/')} />
+      </div>
+      {pickingRoom && <SchoolMapContentPage pickPlaceId={room?.placeId} onPickRoom={pickRoom} onCancelPick={() => setPickingRoom(false)} />}
+    </>
+  )
 }
 
 function toReportCard(report) {
@@ -257,7 +312,7 @@ function SchoolMapPage() {
   return <SchoolMapContentPage key={String(usePreview)} usePreview={usePreview} />
 }
 
-function SchoolMapContentPage({ usePreview, renderReports }) {
+function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRoom, onCancelPick }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { reportId } = useParams()
@@ -271,7 +326,7 @@ function SchoolMapContentPage({ usePreview, renderReports }) {
   const [selectedRoom, setSelectedRoom] = useState(() => location.state?.roomId ? { id: location.state.roomId, placeId: location.state.placeId, isLive: true } : null)
   const [actionRoom, setActionRoom] = useState(null)
   const [detailRoom, setDetailRoom] = useState(null)
-  const [selectedPlace, setSelectedPlace] = useState(null)
+  const [selectedPlace, setSelectedPlace] = useState(() => pickPlaceId != null ? { id: pickPlaceId, isLive: true } : null)
   const [selectedStatus, setSelectedStatus] = useState('all')
   const places = usePreview ? schoolMapPreviewData.places : livePlaces
   const { floorPlaces, quickPlaces } = useMemo(() => splitPlacesByDisplayType(places ?? []), [places])
@@ -374,6 +429,12 @@ function SchoolMapContentPage({ usePreview, renderReports }) {
     setDetailRoom({ id: report.roomId, placeId: report.placeId })
   }, [])
 
+  function selectRoom(id, name) {
+    const roomId = id ?? roomIdsByName.get(name)
+    if (!onPickRoom) setActionRoom({ id: roomId, name })
+    else if (roomId != null) onPickRoom(roomId)
+  }
+
   function selectPin(roomId) {
     setSelectedRoom(roomSelection?.id === roomId ? null : { id: roomId, placeId: selectedPlaceId, isLive })
     setSelectedStatus('all')
@@ -386,7 +447,7 @@ function SchoolMapContentPage({ usePreview, renderReports }) {
         <FloorPlan
           floorPlaces={floorPlaces} quickPlaces={quickPlaces} selectedPlaceId={selectedPlaceId}
           onPlaceChange={changePlace} roomCounts={roomCounts} selectedRoom={reportId && detailRoom && detailRoom.placeId === selectedPlaceId ? detailRoom.id : roomSelection?.id}
-          onRoomSelect={(id, name) => setActionRoom({ id: id ?? roomIdsByName.get(name), name })} onPinSelect={selectPin} usePreview={usePreview} floorResult={floorResult}
+          onRoomSelect={selectRoom} onPinSelect={selectPin} usePreview={usePreview} floorResult={floorResult}
           roomIdsByName={roomIdsByName} roomCountsByName={roomCountsByName}
           placesLoading={placesLoading} placesError={placesError}
           onRetryPlaces={() => { setPlacesError(''); setPlacesAttempt((attempt) => attempt + 1) }}
@@ -405,7 +466,7 @@ function SchoolMapContentPage({ usePreview, renderReports }) {
         ) : (
           <ReportList
             reports={placeReports} selectedStatus={selectedStatus} onStatusChange={setSelectedStatus}
-            onSelectReport={isLive ? (report) => navigate(`/reports/${report.id}`) : undefined}
+            onSelectReport={isLive && !onPickRoom ? (report) => navigate(`/reports/${report.id}`) : undefined}
             isLoading={placesLoading || (isLive && selectedPlaceId != null && !reportsResult)}
             errorMessage={placesError || reportsResult?.error}
             onRetry={reportsResult?.error ? () => setReportsAttempt((attempt) => attempt + 1) : undefined}
@@ -413,6 +474,12 @@ function SchoolMapContentPage({ usePreview, renderReports }) {
           />
         )}
       </SchoolMapContent>
+      {onPickRoom && (
+        <PickRoomGuide role="status">
+          신고할 실을 지도에서 눌러 주세요
+          <button type="button" onClick={onCancelPick}>취소</button>
+        </PickRoomGuide>
+      )}
       {location.state?.toast && (
         <Toast message={location.state.toast} onClose={() => navigate(location.pathname, { replace: true })} />
       )}
