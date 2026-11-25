@@ -5,7 +5,7 @@ import TextField from '../../components/TextField.jsx'
 import useForm from '../../hooks/useForm.js'
 import ReportCategoryField from './ReportCategoryField.jsx'
 import ReportPhotoField from './ReportPhotoField.jsx'
-import { MAX_REPORT_PHOTOS, REPORT_CATEGORIES, validateReport } from './reportFormValidation.js'
+import { MAX_REPORT_PHOTOS, REPORT_CATEGORIES, REPORT_CATEGORY_CODES, validateReport } from './reportFormValidation.js'
 import useReportPhotos from './useReportPhotos.js'
 
 const Page = styled.main`
@@ -124,12 +124,15 @@ const ChangeRoomButton = styled.button`
   }
 `
 
-const Card = styled.form`
+const Card = styled.fieldset`
   display: flex;
   flex-direction: column;
   gap: ${({ theme }) => theme.reportForm.layout.sectionGap};
   width: 100%;
   max-width: ${({ theme }) => theme.reportForm.layout.width};
+  min-width: 0;
+  margin: 0;
+  border: 0;
   padding: ${({ theme }) => theme.reportForm.layout.formPaddingBlock} ${({ theme }) => theme.reportForm.layout.formPaddingInline};
   border-radius: ${({ theme }) => theme.auth.radius.form};
   background: ${({ theme }) => theme.auth.color.surface};
@@ -137,6 +140,11 @@ const Card = styled.form`
   @media (max-width: ${({ theme }) => theme.reportForm.layout.mobileBreakpoint}) {
     padding: ${({ theme }) => theme.space[6]} ${({ theme }) => theme.space[4]};
   }
+`
+
+const Form = styled.form`
+  width: 100%;
+  max-width: ${({ theme }) => theme.reportForm.layout.width};
 `
 
 const Footer = styled.div`
@@ -156,81 +164,94 @@ const pinIcon = (
   </svg>
 )
 
-export default function ReportForm({ room, submitting = false, submitError, onPickRoom, onSubmit, onCancel }) {
-  const { photos, error: photoError, addPhotos, removePhoto } = useReportPhotos(MAX_REPORT_PHOTOS)
+export default function ReportForm({ room, initialReport, submitting = false, submitError, onPickRoom, onSubmit, onCancel }) {
+  const { photos, error: photoError, addPhotos, removePhoto } = useReportPhotos(MAX_REPORT_PHOTOS, initialReport?.photos)
   const { values, errors, handleChange, handleSubmit } = useForm(
-    { category: '', title: '', content: '', improvement: '' },
+    {
+      room: room?.id ?? '',
+      category: REPORT_CATEGORIES.find((label) => REPORT_CATEGORY_CODES[label] === initialReport?.categoryCode) ?? '',
+      title: initialReport?.title ?? '',
+      content: initialReport?.content ?? '',
+      improvement: initialReport?.improvement ?? '',
+    },
     (report) => validateReport({ ...report, room: room?.id }),
-    (report) => onSubmit?.({ ...report, photos: photos.map((photo) => photo.file) }),
+    (report) => {
+      if (!submitting) onSubmit?.({ ...report, room, photos: photos.map((photo) => photo.imageUrl ?? photo.file) })
+    },
   )
+  const submitLabel = initialReport ? '수정 저장' : '신고하기'
+  const pendingLabel = initialReport ? '저장하는 중' : '신고하는 중'
 
   return (
     <Page>
       <Header>
-        <BackButton type="button" aria-label="뒤로 가기" onClick={onCancel}>
+        <BackButton type="button" aria-label="뒤로 가기" disabled={submitting} onClick={onCancel}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
             <path d="m15 5-7 7 7 7" />
           </svg>
         </BackButton>
-        <Title id="report-form-title">불편 신고하기</Title>
+        <Title id="report-form-title">{initialReport ? '게시물 수정' : '불편 신고하기'}</Title>
         {room ? (
           <RoomGroup>
             <RoomInfo>{pinIcon}{room.name} · {room.placeName}</RoomInfo>
-            <ChangeRoomButton type="button" onClick={onPickRoom}>위치 변경</ChangeRoomButton>
+            <ChangeRoomButton type="button" name="room" form="report-form" disabled={submitting} onClick={onPickRoom}>위치 변경</ChangeRoomButton>
           </RoomGroup>
         ) : (
-          <RoomInfo as="button" type="button" onClick={onPickRoom}>{pinIcon}지도에서 실 선택</RoomInfo>
+          <RoomInfo as="button" type="button" name="room" form="report-form" disabled={submitting} onClick={onPickRoom}>{pinIcon}지도에서 실 선택</RoomInfo>
         )}
       </Header>
-      <Card noValidate onSubmit={handleSubmit} aria-labelledby="report-form-title">
-        <FieldError>{!room && errors.room}</FieldError>
-        <ReportCategoryField
-          name="category"
-          categories={REPORT_CATEGORIES}
-          value={values.category}
-          error={errors.category}
-          onChange={handleChange}
-        />
-        <TextField
-          id="report-title"
-          name="title"
-          label="제목"
-          placeholder="제목을 입력하세요"
-          value={values.title}
-          onChange={handleChange}
-          error={errors.title}
-        />
-        <TextField
-          id="report-content"
-          name="content"
-          label="본문"
-          placeholder="불편한 점을 자세히 적어주세요."
-          multiline
-          value={values.content}
-          onChange={handleChange}
-          error={errors.content}
-        />
-        <TextField
-          id="report-improvement"
-          name="improvement"
-          label="개선 방향 (선택)"
-          placeholder="이렇게 바뀌면 좋겠어요"
-          value={values.improvement}
-          onChange={handleChange}
-        />
-        <ReportPhotoField
-          photos={photos}
-          maxCount={MAX_REPORT_PHOTOS}
-          error={photoError}
-          onAdd={addPhotos}
-          onRemove={removePhoto}
-        />
-        <FieldError>{submitError}</FieldError>
-        <Footer>
-          <Button variant="neutral" onClick={onCancel}>취소</Button>
-          <Button type="submit" fullWidth={false} disabled={submitting}>{submitting ? '신고하는 중' : '신고하기'}</Button>
-        </Footer>
-      </Card>
+      <Form id="report-form" noValidate onSubmit={handleSubmit} aria-labelledby="report-form-title" aria-busy={submitting}>
+        <Card disabled={submitting}>
+          <FieldError>{!room && errors.room}</FieldError>
+          <ReportCategoryField
+            name="category"
+            categories={REPORT_CATEGORIES}
+            value={values.category}
+            error={errors.category}
+            onChange={handleChange}
+          />
+          <TextField
+            id="report-title"
+            name="title"
+            label="제목"
+            placeholder="제목을 입력하세요"
+            value={values.title}
+            onChange={handleChange}
+            error={errors.title}
+          />
+          <TextField
+            id="report-content"
+            name="content"
+            label="본문"
+            placeholder="불편한 점을 자세히 적어주세요."
+            multiline
+            value={values.content}
+            onChange={handleChange}
+            error={errors.content}
+          />
+          <TextField
+            id="report-improvement"
+            name="improvement"
+            label="개선 방향 (선택)"
+            placeholder="이렇게 바뀌면 좋겠어요"
+            value={values.improvement}
+            onChange={handleChange}
+            error={errors.improvement}
+          />
+          <ReportPhotoField
+            photos={photos}
+            maxCount={MAX_REPORT_PHOTOS}
+            error={photoError}
+            onAdd={(files) => { if (!submitting) addPhotos(files) }}
+            onRemove={removePhoto}
+          />
+          <FieldError>{submitError}</FieldError>
+          <Footer>
+            <Button variant="neutral" onClick={onCancel}>취소</Button>
+            <Button type="submit" fullWidth={false} disabled={submitting}>{submitting ? pendingLabel : submitLabel}</Button>
+          </Footer>
+        </Card>
+      </Form>
     </Page>
   )
 }
