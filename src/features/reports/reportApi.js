@@ -1,4 +1,5 @@
 import { apiUrl, request } from '../../api/client.js'
+import { REPORT_CATEGORY_CODES } from './reportFormValidation.js'
 
 export const reportStatuses = [
   { code: 'UNRESOLVED', tone: 'received', label: '접수' },
@@ -42,12 +43,16 @@ function toReportDetail(report) {
     content: report.content,
     improvement: report.improvement,
     category: report.category?.label ?? '',
+    categoryCode: report.category?.code,
     location: [report.place?.name, report.room?.name].filter(Boolean).join(' · '),
     placeId: report.place?.id,
     roomId: report.room?.id,
+    posX: report.posX,
+    posY: report.posY,
     author: report.author?.name ?? '',
     authorDisplay: toAuthorDisplay(report.author),
     canChangeStatus: report.canChangeStatus === true,
+    canEdit: report.canEdit === true,
     primaryAssigneeId: report.assignee?.id ?? null,
     manager: report.assignee?.name ?? '',
     coAssignees: (report.coAssignees ?? []).map((manager) => ({
@@ -61,6 +66,7 @@ function toReportDetail(report) {
     completedAt: report.resolvedAt?.slice(0, 10) ?? '',
     photos: (report.imageUrls ?? []).map((src, index) => ({
       id: `${report.id}-${index}`,
+      imageUrl: src,
       src: apiUrl(src),
       alt: `${report.title} 첨부 사진 ${index + 1}`,
     })),
@@ -77,13 +83,6 @@ export async function fetchReportDetail(reportId) {
   return toReportDetail(report)
 }
 
-const categoryCodes = {
-  '시설 고장': 'FACILITY',
-  네트워크: 'NETWORK',
-  청소: 'ENVIRONMENT',
-  기타: 'ETC',
-}
-
 export function fetchRooms() {
   return request('/api/rooms')
 }
@@ -98,19 +97,33 @@ async function fetchRoomCenter(room) {
   return { posX: round(average('gridCol') / floorPlan.gridCols), posY: round(average('gridRow') / floorPlan.gridRows) }
 }
 
-export async function createReport({ room, category, title, content, improvement, photos }) {
+async function uploadReportPhoto(photo) {
+  if (typeof photo === 'string') return photo
+  const body = new FormData()
+  body.append('file', photo)
+  const image = await request('/api/images/posts', { method: 'POST', body })
+  return image.imageUrl
+}
+
+async function buildPostBody({ room, category, title, content, improvement, photos }, initialReport) {
   const [position, imageUrls] = await Promise.all([
-    fetchRoomCenter(room),
-    Promise.all(photos.map((photo) => {
-      const body = new FormData()
-      body.append('file', photo)
-      return request('/api/images/posts', { method: 'POST', body }).then((image) => image.imageUrl)
-    })),
+    initialReport?.roomId === room.id
+      ? { posX: initialReport.posX, posY: initialReport.posY }
+      : fetchRoomCenter(room),
+    Promise.all(photos.map(uploadReportPhoto)),
   ])
 
-  return request('/api/posts', {
-    method: 'POST',
-    body: { title, content, category: categoryCodes[category], roomId: room.id, ...position, improvement, imageUrls },
+  return { title, content, category: REPORT_CATEGORY_CODES[category], roomId: room.id, ...position, improvement, imageUrls }
+}
+
+export async function createReport(values) {
+  return request('/api/posts', { method: 'POST', body: await buildPostBody(values) })
+}
+
+export async function updateReport(reportId, values, initialReport) {
+  return request(`/api/posts/${encodeURIComponent(reportId)}`, {
+    method: 'PUT',
+    body: await buildPostBody(values, initialReport),
   })
 }
 
