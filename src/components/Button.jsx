@@ -80,6 +80,12 @@ const StyledButton = styled.button`
   }
 
   ${({ $variant }) => variants[$variant] ?? primary}
+  ${({ $size }) => $size === 'small' && css`
+    min-width: 0;
+    min-height: 32px;
+    padding: 0 14px;
+    font-size: ${({ theme }) => theme.auth.font.label};
+  `}
 `
 
 export default function Button({

@@ -2,7 +2,7 @@ import styled from 'styled-components'
 
 const Canvas = styled.section`
   --room-gap: 4px;
-  --room-columns: ${({ $count }) => Math.max(18, $count)};
+  --room-columns: ${({ $count, $enlarge }) => Math.max($enlarge ? 16 : 18, $count)};
   --plan-columns: ${({ $count }) => $count};
   display: grid;
   grid-template-columns: calc(100% * var(--plan-columns) / var(--room-columns));
@@ -99,6 +99,13 @@ const Pin = styled.button`
   &:focus-visible { outline: 2px solid ${({ theme }) => theme.schoolMap.color.focus}; outline-offset: 2px; }
 `
 
+const RoomName = styled.span`
+  display: block;
+  max-width: 100%;
+  font-size: calc(var(--cell-size) * ${({ $length }) => Math.min(0.23, 0.7 / Math.ceil(Math.sqrt($length)))});
+  overflow-wrap: anywhere;
+`
+
 function getPinArea(cells, gridRows, gridCols) {
   cells = cells.filter((cell) => cell.gridRow >= 0 && cell.gridRow < gridRows && cell.gridCol >= 0 && cell.gridCol < gridCols)
   const top = Math.min(...cells.map((cell) => cell.gridRow))
@@ -134,9 +141,9 @@ function getRoomRegions(cells, gridRows, gridCols, passage) {
   }))
 }
 
-export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom, roomCounts, selectedRoom, onRoomSelect, onPinSelect, roomIdsByName }) {
+export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom, roomCounts, selectedRoom, onRoomSelect, onPinSelect, roomIdsByName, renderRoomEditor, enlarge }) {
   return (
-    <Canvas $count={grid.gridCols} $zoom={zoom} aria-label={`${title} 평면도`}>
+    <Canvas $count={grid.gridCols} $zoom={zoom} $enlarge={enlarge} aria-label={`${title} 평면도`}>
       <Title>{title}</Title>
       <CoordinateGrid $rows={grid.gridRows}>
         {grid.rooms.flatMap(({ id, name, cells }) => {
@@ -149,7 +156,17 @@ export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom,
           const count = roomCounts.get(id) ?? 0
           const countLevel = count >= 5 ? 'high' : count >= 3 ? 'mid' : 'low'
 
-          const rooms = regions.map((style, index) => (
+          const rooms = regions.map((style, index) => index === 0 && selectedRoom === id && renderRoomEditor ? (
+            <Room
+              as="div"
+              key={`${id}:${style.gridArea}:editor`}
+              data-area-id={id}
+              $passage={passage}
+              style={style}
+            >
+              {renderRoomEditor()}
+            </Room>
+          ) : (
             <Room
               key={`${id}:${style.gridArea}`}
               data-area-id={id}
@@ -163,7 +180,7 @@ export default function CreativeFloorPlan({ title, grid, splitSupportRoom, zoom,
               aria-pressed={selectedRoom === id}
               onClick={() => onRoomSelect(id, name)}
             >
-              {index === 0 && (labels ? <RoomGroup>{labels.map((label) => <span key={label}>{label}</span>)}</RoomGroup> : name)}
+              {index === 0 && (labels ? <RoomGroup>{labels.map((label) => <span key={label}>{label}</span>)}</RoomGroup> : renderRoomEditor ? <RoomName $length={name.length}>{name}</RoomName> : name)}
             </Room>
           ))
           if (count === 0 || regions.length === 0) return rooms

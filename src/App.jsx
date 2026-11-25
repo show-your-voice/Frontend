@@ -10,6 +10,7 @@ import LoginForm from './features/auth/LoginForm.jsx'
 import SignupForm from './features/auth/SignupForm.jsx'
 import ManagerInfoPage from './features/managers/ManagerInfoPage.jsx'
 import FloorPlan from './features/school-map/FloorPlan.jsx'
+import MapManagementPage from './features/school-map/MapManagementPage.jsx'
 import PlaceActionModal from './features/school-map/PlaceActionModal.jsx'
 import { schoolMapPreviewData, splitPlacesByDisplayType } from './features/school-map/schoolMapPreviewData.js'
 import ReportForm from './features/reports/ReportForm.jsx'
@@ -149,7 +150,7 @@ function LoginPage() {
   function handleLogin(user) {
     const next = searchParams.get('next') ?? ''
     const [nextPath] = next.split('?')
-    const managerPath = /^\/manager\/reports(?:\/\d+)?\/?$/.test(nextPath) ? next : '/manager/reports'
+    const managerPath = /^\/manager\/(?:reports(?:\/\d+)?|map)\/?$/.test(nextPath) ? next : '/manager/reports'
     const home = user.role === 'TEACHER' ? managerPath : '/'
     navigate(next === '/managers' ? next : home, { replace: true })
   }
@@ -167,7 +168,7 @@ function HeaderLayout() {
   const navigate = useNavigate()
   const matches = useMatches()
   const header = [...matches].reverse().find((match) => match.handle?.header)?.handle.header
-  const sessionMatch = matches.find((match) => ['manager', 'manager-directory'].includes(match.id))
+  const sessionMatch = matches.find((match) => ['manager', 'manager-directory', 'manager-map'].includes(match.id))
   const account = sessionMatch?.loaderData
   const isTeacher = account?.role === 'TEACHER'
   const [loggingOut, setLoggingOut] = useState(false)
@@ -569,11 +570,20 @@ const router = createBrowserRouter([
         loader: loadManager,
         HydrateFallback: SessionLoading,
         ErrorBoundary: SessionError,
-        handle: { header: { navigationLabel: '불편 신고' } },
+        handle: { header: { navigationLabel: '교내 지도' } },
         children: [
           { index: true, element: <SchoolMapPage /> },
           { path: ':reportId', element: <ManagerReportDetailPage /> },
         ],
+      },
+      {
+        id: 'manager-map',
+        path: '/manager/map',
+        loader: loadManager,
+        HydrateFallback: SessionLoading,
+        ErrorBoundary: SessionError,
+        element: <MapManagementPage />,
+        handle: { header: { navigationLabel: '교내 지도' } },
       },
       {
         id: 'manager-directory',
