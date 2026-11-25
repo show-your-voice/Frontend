@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { MAX_REPORT_PHOTO_SIZE, REPORT_PHOTO_TYPES } from './reportFormValidation.js'
 
-export default function useReportPhotos(maxCount) {
-  const [photos, setPhotos] = useState([])
+export default function useReportPhotos(maxCount, initialPhotos = []) {
+  const [photos, setPhotos] = useState(initialPhotos)
   const [error, setError] = useState('')
   const photosRef = useRef(photos)
   const nextId = useRef(0)
@@ -10,7 +10,9 @@ export default function useReportPhotos(maxCount) {
   useEffect(() => { photosRef.current = photos }, [photos])
 
   useEffect(() => () => {
-    photosRef.current.forEach((photo) => URL.revokeObjectURL(photo.src))
+    photosRef.current.forEach((photo) => {
+      if (photo.file) URL.revokeObjectURL(photo.src)
+    })
   }, [])
 
   function addPhotos(fileList) {
@@ -36,7 +38,7 @@ export default function useReportPhotos(maxCount) {
 
   function removePhoto(id) {
     const removed = photos.find((photo) => photo.id === id)
-    if (removed) URL.revokeObjectURL(removed.src)
+    if (removed?.file) URL.revokeObjectURL(removed.src)
     setPhotos(photos.filter((photo) => photo.id !== id))
     setError('')
   }

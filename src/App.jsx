@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Navigate, Outlet, RouterProvider, createBrowserRouter, redirect, useLocation, useMatches, useNavigate, useParams, useRevalidator, useSearchParams } from 'react-router-dom'
+import { Navigate, Outlet, RouterProvider, createBrowserRouter, redirect, useLoaderData, useLocation, useMatches, useNavigate, useParams, useRevalidator, useSearchParams } from 'react-router-dom'
 import styled from 'styled-components'
 import { ApiError, request } from './api/client.js'
 import Header from './components/Header.jsx'
@@ -17,7 +17,7 @@ import ReportForm from './features/reports/ReportForm.jsx'
 import ReportList from './features/reports/ReportList.jsx'
 import ManagerReportDetailPage from './features/reports/ManagerReportDetailPage.jsx'
 import ReportDetailPanel from './features/reports/ReportDetailPanel.jsx'
-import { createReport, fetchManagerReports, fetchRooms } from './features/reports/reportApi.js'
+import { createReport, fetchManagerReports, fetchReportDetail, fetchRooms, updateReport } from './features/reports/reportApi.js'
 import { mapReportPreviewData } from './features/reports/reportPreviewData.js'
 
 const ReportPage = styled.main`
@@ -150,6 +150,11 @@ function LoginPage() {
   function handleLogin(user) {
     const next = searchParams.get('next') ?? ''
     const [nextPath] = next.split('?')
+    if (/^\/reports\/\d+\/edit\/?$/.test(nextPath)) {
+      navigate(next, { replace: true })
+      return
+    }
+    const managerPath = /^\/manager\/reports(?:\/\d+(?:\/edit)?)?\/?$/.test(nextPath) ? next : '/manager/reports'
     const managerPath = /^\/manager\/(?:reports(?:\/\d+)?|map)\/?$/.test(nextPath) ? next : '/manager/reports'
     const home = user.role === 'TEACHER' ? managerPath : '/'
     navigate(next === '/managers' ? next : home, { replace: true })
@@ -165,6 +170,7 @@ function SignupPage() {
 }
 
 function HeaderLayout() {
+  const location = useLocation()
   const navigate = useNavigate()
   const matches = useMatches()
   const header = [...matches].reverse().find((match) => match.handle?.header)?.handle.header
@@ -193,6 +199,9 @@ function HeaderLayout() {
         />
       )}
       <Outlet />
+      {location.state?.toast && (
+        <Toast message={location.state.toast} onClose={() => navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: { ...location.state, toast: null } })} />
+      )}
     </>
   )
 }
@@ -232,47 +241,90 @@ function SessionError() {
   )
 }
 
-function ReportCreatePage() {
+async function loadReportForm({ params, request }) {
+  try {
+    const [rooms, report] = await Promise.all([
+      fetchRooms(),
+      params.reportId ? fetchReportDetail(params.reportId) : null,
+    ])
+    if (report && !report.canEdit) return { error: '작성자만 게시물을 수정할 수 있어요.' }
+    return { rooms, report }
+  } catch (error) {
+    if (error.status === 401 && params.reportId) {
+      const { pathname, search } = new URL(request.url)
+      throw redirect(`/login?${new URLSearchParams({ next: pathname + search })}`)
+    }
+    if (error.status === 404 && params.reportId) return { error: '게시물을 찾을 수 없어요.' }
+    return { error: mapRequestError(error, '신고 작성 정보를'), retryable: true }
+  }
+}
+
+function ReportFormPage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [rooms, setRooms] = useState(null)
-  const [pickedRoomId, setPickedRoomId] = useState(null)
-  const [pickingRoom, setPickingRoom] = useState(false)
-  const room = rooms?.find((item) => item.id === (pickedRoomId ?? location.state?.roomId))
+  const { reportId } = useParams()
+  const { rooms, report, error, retryable } = useLoaderData()
+  const { revalidate, state } = useRevalidator()
+  const detailPath = location.pathname.replace(/\/edit\/?$/, '')
+
+  function cancel() {
+    navigate(reportId ? { pathname: detailPath, search: location.search } : '/', { replace: Boolean(reportId) })
+  }
+
+  if (error) return (
+    <ReportPage>
+      <section role="alert">
+        <p>{error}</p>
+        {retryable && <OutlineButton onClick={revalidate} disabled={state !== 'idle'}>다시 시도</OutlineButton>}
+        <OutlineButton onClick={cancel}>돌아가기</OutlineButton>
+      </section>
+    </ReportPage>
+  )
+
+  return <ReportEditor key={reportId ?? 'create'} rooms={rooms} report={report} detailPath={detailPath} onCancel={cancel} />
+}
+
+function ReportEditor({ rooms, report, detailPath, onCancel }) {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [pickedRoomId, setPickedRoomId] = useState(null)
+  const [pickingRoom, setPickingRoom] = useState(false)
+  const room = rooms.find((item) => item.id === (pickedRoomId ?? report?.roomId ?? location.state?.roomId))
 
-  useEffect(() => {
-    let ignore = false
-    fetchRooms()
-      .then((data) => { if (!ignore) setRooms(data) })
-      .catch((error) => { if (!ignore) setSubmitError(mapRequestError(error, '실 목록을')) })
-    return () => { ignore = true }
-  }, [])
+  function pickRoom(id) {
+    setPickedRoomId(id)
+    setPickingRoom(false)
+  }
 
-  async function submitReport(report) {
+  async function submitReport(values) {
+    if (submitting) return
     setSubmitting(true)
     setSubmitError('')
     try {
-      const created = await createReport({ ...report, room })
-      navigate(`/reports/${created.id}`, { replace: true, state: { toast: '신고가 접수됐어요', placeId: created.place?.id, roomId: created.room?.id } })
+      const saved = report ? await updateReport(report.id, values, report) : await createReport(values)
+      navigate({ pathname: report ? detailPath : `/reports/${saved.id}`, search: location.search }, {
+        replace: true,
+        state: { toast: report ? '게시물을 수정했어요' : '신고가 접수됐어요', placeId: saved.place?.id, roomId: saved.room?.id },
+      })
     } catch (error) {
-      setSubmitError(error instanceof ApiError && error.status === 401 ? '로그인 후 다시 시도해 주세요.' : error instanceof ApiError ? error.message : '신고를 등록하지 못했습니다.')
+      const fallback = report ? '게시물을 수정하지 못했어요.' : '신고를 등록하지 못했어요.'
+      setSubmitError(error instanceof ApiError ? error.fieldErrors[0]?.reason ?? error.message : fallback)
       setSubmitting(false)
     }
-  }
-
-  function pickRoom(roomId) {
-    setPickedRoomId(roomId)
-    setPickingRoom(false)
   }
 
   return (
     <>
       <div hidden={pickingRoom}>
-        <ReportForm room={room} submitting={submitting} submitError={submitError} onPickRoom={() => setPickingRoom(true)} onSubmit={submitReport} onCancel={() => navigate('/')} />
+        <ReportForm room={room} initialReport={report}
+          submitting={submitting} submitError={submitError} onPickRoom={() => setPickingRoom(true)}
+          onSubmit={submitReport} onCancel={onCancel} />
       </div>
-      {pickingRoom && <SchoolMapContentPage pickPlaceId={room?.placeId} onPickRoom={pickRoom} onCancelPick={() => setPickingRoom(false)} />}
+      {pickingRoom && (
+        <SchoolMapContentPage pickPlaceId={room?.placeId} onPickRoom={pickRoom} onCancelPick={() => setPickingRoom(false)} />
+      )}
     </>
   )
 }
@@ -316,7 +368,8 @@ function SchoolMapPage() {
 function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRoom, onCancelPick }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { reportId } = useParams()
+  const { reportId: detailId } = useParams()
+  const reportId = onPickRoom ? undefined : detailId
   const [livePlaces, setLivePlaces] = useState(null)
   const [placesError, setPlacesError] = useState('')
   const [placesAttempt, setPlacesAttempt] = useState(0)
@@ -448,7 +501,7 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
         <FloorPlan
           floorPlaces={floorPlaces} quickPlaces={quickPlaces} selectedPlaceId={selectedPlaceId}
           onPlaceChange={changePlace} roomCounts={roomCounts} selectedRoom={reportId && detailRoom && detailRoom.placeId === selectedPlaceId ? detailRoom.id : roomSelection?.id}
-          onRoomSelect={selectRoom} onPinSelect={selectPin} usePreview={usePreview} floorResult={floorResult}
+          onRoomSelect={selectRoom} onPinSelect={onPickRoom ?? selectPin} usePreview={usePreview} floorResult={floorResult}
           roomIdsByName={roomIdsByName} roomCountsByName={roomCountsByName}
           placesLoading={placesLoading} placesError={placesError}
           onRetryPlaces={() => { setPlacesError(''); setPlacesAttempt((attempt) => attempt + 1) }}
@@ -480,9 +533,6 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
           신고할 실을 지도에서 눌러 주세요
           <button type="button" onClick={onCancelPick}>취소</button>
         </PickRoomGuide>
-      )}
-      {location.state?.toast && (
-        <Toast message={location.state.toast} onClose={() => navigate(location.pathname, { replace: true })} />
       )}
       {actionRoom && (
         <PlaceActionModal
@@ -555,6 +605,13 @@ function ManagerReportsPage({ usePreview }) {
   )
 }
 
+const reportFormRoute = {
+  loader: loadReportForm,
+  element: <ReportFormPage />,
+  HydrateFallback: () => <ReportPage><p role="status">신고 정보를 불러오는 중이에요.</p></ReportPage>,
+}
+const editRoute = { ...reportFormRoute, handle: { header: { navigationLabel: '게시물 수정' } } }
+
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/signup', element: <SignupPage /> },
@@ -562,7 +619,8 @@ const router = createBrowserRouter([
     element: <HeaderLayout />,
     children: [
       { path: '/reports/:reportId', element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
-      { path: '/reports/new', element: <ReportCreatePage />, handle: { header: { navigationLabel: '신고 작성' } } },
+      { path: '/reports/:reportId/edit', ...editRoute },
+      { path: '/reports/new', ...reportFormRoute, handle: { header: { navigationLabel: '신고 작성' } } },
       { index: true, element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
       {
         id: 'manager',
@@ -574,6 +632,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <SchoolMapPage /> },
           { path: ':reportId', element: <ManagerReportDetailPage /> },
+          { path: ':reportId/edit', ...editRoute },
         ],
       },
       {
