@@ -6,8 +6,6 @@ export const REPORT_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 
 export const MAX_REPORT_PHOTO_SIZE = 5 * 1024 * 1024
 
-export const MAX_ROOM_OPTIONS = 4
-
 export function validateReport({ room, category, title, content }) {
   const errors = {}
   if (!room) errors.room = '실을 선택해 주세요.'
