@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 import OutlineButton from '../../components/OutlineButton.jsx'
 import StatusBadge from '../../components/StatusBadge.jsx'
@@ -109,11 +110,15 @@ const Improvement = styled.aside`
 `
 
 const Actions = styled.div`
+  display: grid;
+  gap: ${({ theme }) => theme.space[2]};
   margin-top: auto;
   padding-top: ${({ theme }) => theme.space[8]};
 `
 
 export default function ReportDetail({ report, onBack, onDelete, onAddCoAssignee, statusControls }) {
+  const navigate = useNavigate()
+  const { search } = useLocation()
   const headingRef = useRef(null)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   useEffect(() => { headingRef.current?.focus() }, [report.id])
@@ -150,9 +155,12 @@ export default function ReportDetail({ report, onBack, onDelete, onAddCoAssignee
           </Improvement>
         )}
       </Content>
-      {onDelete && (
+      {(report.canEdit || onDelete) && (
         <Actions>
-          <OutlineButton danger large tonal onClick={() => setIsDeleteModalOpen(true)}>게시물 삭제</OutlineButton>
+          {report.canEdit && (
+            <OutlineButton large onClick={() => navigate({ pathname: 'edit', search })}>게시물 수정</OutlineButton>
+          )}
+          {onDelete && <OutlineButton danger large tonal onClick={() => setIsDeleteModalOpen(true)}>게시물 삭제</OutlineButton>}
         </Actions>
       )}
       {isDeleteModalOpen && (
