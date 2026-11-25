@@ -199,6 +199,12 @@ export const theme = {
       errorSurface: '#fdecec',
       neutral: '#f4eef1',
       notebookShadow: '#e3e3e3',
+      brandSubtle: '#feedf6',
+      brandStrong: '#a3165f',
+      disabled: '#f7f1f4',
+      disabledText: '#ada5aa',
+      success: '#1f9d63',
+      locked: '#fff6fa',
     },
     font: {
       family: fontFamily,
@@ -219,6 +225,10 @@ export const theme = {
       fieldHeight: '48px',
       buttonHeight: '52px',
       textButtonHeight: '40px',
+      mediumButtonWidth: '88px',
+      mediumButtonPadding: '18px',
+      // 입력칸 옆 버튼을 입력칸 높이에 맞추려고 라벨(14px × 1.4)과 간격(8px)만큼 내린다.
+      fieldActionOffset: '28px',
       pageGutter: '24px',
       brandBreakpoint: '1279px',
       mobileBreakpoint: '520px',

@@ -46,6 +46,13 @@ const Input = styled.input`
     border-color: ${({ theme, $invalid }) => $invalid ? theme.auth.color.error : theme.auth.color.brand};
   }
 
+  /* 인증을 마친 이메일처럼 더 고칠 수 없는 값은 테두리 없이 흐리게 보인다. */
+  &:read-only {
+    border-color: transparent;
+    background: ${({ theme }) => theme.auth.color.locked};
+    color: ${({ theme }) => theme.auth.color.textTertiary};
+  }
+
   ${({ $multiline }) => $multiline && multiline}
 `
 
@@ -58,7 +65,8 @@ const Helper = styled.p`
   align-items: flex-start;
   gap: ${({ theme }) => theme.space[1]};
   margin: 0;
-  color: ${({ theme, $invalid }) => $invalid ? theme.auth.color.error : theme.auth.color.textTertiary};
+  color: ${({ theme, $invalid, $success }) =>
+    $invalid ? theme.auth.color.error : $success ? theme.auth.color.success : theme.auth.color.textTertiary};
   font-size: ${({ theme }) => theme.auth.font.caption};
   word-break: keep-all;
   overflow-wrap: anywhere;
@@ -69,13 +77,14 @@ const Helper = styled.p`
   }
 `
 
-// invalid는 메시지 없이 오류 테두리만 보여야 할 때 쓴다.
+// invalid는 메시지 없이 오류 테두리만 보여야 할 때 쓴다. success는 안내 문구를 완료 색으로 보인다.
 export default function TextField({
   id,
   label,
   helper,
   error,
   invalid = Boolean(error),
+  success = false,
   multiline = false,
   children,
   ...inputProps
@@ -99,7 +108,7 @@ export default function TextField({
         {children}
       </Control>
       {message && (
-        <Helper id={messageId} $invalid={Boolean(error)}>
+        <Helper id={messageId} $invalid={Boolean(error)} $success={success}>
           {error && <img src={alertIcon} width="16" height="16" alt="" />}
           {message}
         </Helper>
