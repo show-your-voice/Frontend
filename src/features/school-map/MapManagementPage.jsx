@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useState } from 'react'
 import styled from 'styled-components'
-import { request } from '../../api/client.js'
+import { ApiError, request } from '../../api/client.js'
 import Button from '../../components/Button.jsx'
 import FloorPlan from './FloorPlan.jsx'
 import { splitPlacesByDisplayType } from './schoolMapPreviewData.js'
@@ -54,6 +54,15 @@ const Editor = styled.form`
 `
 
 const noReports = new Map()
+const roomNameMaxLength = 50
+
+function getMapError(error, fallback) {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return '로그인이 만료됐습니다. 다시 로그인해 주세요.'
+    if (error.status === 403) return '지도 관리 권한이 없습니다.'
+  }
+  return fallback
+}
 
 export default function MapManagementPage() {
   const editorFormId = useId()
@@ -94,8 +103,8 @@ export default function MapManagementPage() {
     request('/api/places').then((data) => {
       if (!Array.isArray(data)) throw new Error('Invalid places response')
       if (!ignore) setPlaces(data)
-    }).catch(() => {
-      if (!ignore) setPlacesError('장소 목록을 불러오지 못했습니다.')
+    }).catch((error) => {
+      if (!ignore) setPlacesError(getMapError(error, '장소 목록을 불러오지 못했습니다.'))
     })
     return () => { ignore = true }
   }, [placesAttempt])
@@ -105,8 +114,8 @@ export default function MapManagementPage() {
     let ignore = false
     request(`/api/places/${selectedId}/floor-plan`).then((data) => {
       if (!ignore) setFloorResult({ placeId: selectedId, data })
-    }).catch(() => {
-      if (!ignore) setFloorResult({ placeId: selectedId, error: '평면도를 불러오지 못했습니다.' })
+    }).catch((error) => {
+      if (!ignore) setFloorResult({ placeId: selectedId, error: getMapError(error, '평면도를 불러오지 못했습니다.') })
     })
     return () => { ignore = true }
   }, [selectedId, floorAttempt])
@@ -114,17 +123,24 @@ export default function MapManagementPage() {
   async function saveName(event) {
     event.preventDefault()
     const name = editor.name.trim()
-    if (!name || saving) return
+    if (!name || name.length > roomNameMaxLength || saving) return
     setSaving(true)
     try {
       const updated = await request(`/api/rooms/${editor.id}`, { method: 'PATCH', body: { name } })
+      if (updated?.id !== editor.id || typeof updated.name !== 'string' || !updated.name.trim()) {
+        throw new Error('Invalid room update response')
+      }
       setFloorResult((result) => ({
         ...result,
         data: { ...result.data, rooms: result.data.rooms.map((room) => room.id === editor.id ? { ...room, name: updated.name } : room) },
       }))
       setEditor(null)
-    } catch {
-      setEditor({ ...editor, error: '이름을 저장하지 못했습니다. 다시 시도해 주세요.' })
+    } catch (error) {
+      const nameError = error instanceof ApiError && error.fieldErrors.find(({ field }) => field === 'name')?.reason
+      const fallback = error instanceof ApiError && error.status === 404
+        ? '실을 찾을 수 없습니다. 페이지를 새로고침해 주세요.'
+        : '이름을 저장하지 못했습니다. 다시 시도해 주세요.'
+      setEditor({ ...editor, error: nameError || getMapError(error, fallback) })
     } finally {
       setSaving(false)
     }
@@ -165,7 +181,7 @@ export default function MapManagementPage() {
           }}>
             <textarea
               ref={focusRoomName}
-              aria-label="실 이름" rows={1} maxLength={50} required value={editor.name} readOnly={saving}
+              aria-label="실 이름" rows={1} maxLength={roomNameMaxLength} required value={editor.name} readOnly={saving}
               onChange={(event) => setEditor({ ...editor, name: event.target.value, error: '' })}
             />
           </Editor>
