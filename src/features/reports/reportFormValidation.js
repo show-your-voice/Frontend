@@ -2,6 +2,10 @@ export const REPORT_CATEGORIES = ['시설 고장', '네트워크', '청소', '�
 
 export const MAX_REPORT_PHOTOS = 5
 
+export const REPORT_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
+export const MAX_REPORT_PHOTO_SIZE = 5 * 1024 * 1024
+
 export const MAX_ROOM_OPTIONS = 4
 
 export function validateReport({ room, category, title, content }) {

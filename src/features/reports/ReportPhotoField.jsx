@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import styled, { css } from 'styled-components'
 import FieldError from '../../components/FieldError.jsx'
+import { REPORT_PHOTO_TYPES } from './reportFormValidation.js'
 
 const Field = styled.div`
   display: flex;
@@ -180,7 +181,7 @@ export default function ReportPhotoField({ photos, maxCount, error, onAdd, onRem
   return (
     <Field role="group" aria-labelledby={labelId} aria-describedby={errorId} onDragOver={preventDefault} onDrop={handleDrop}>
       <Label id={labelId}>사진 첨부 <span>(선택)</span></Label>
-      <HiddenInput ref={inputRef} type="file" accept="image/*" multiple tabIndex={-1} onChange={handleChange} />
+      <HiddenInput ref={inputRef} type="file" accept={REPORT_PHOTO_TYPES.join(',')} multiple tabIndex={-1} onChange={handleChange} />
       {photos.length === 0 ? (
         <Dropzone type="button" $invalid={Boolean(error)} onClick={openPicker}>
           <ImageIcon />
