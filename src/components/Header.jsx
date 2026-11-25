@@ -1,4 +1,5 @@
 import styled from 'styled-components'
+import { NavLink } from 'react-router-dom'
 import logo from '../assets/Logo.png'
 
 const HeaderContainer = styled.header`
@@ -12,6 +13,11 @@ const HeaderContainer = styled.header`
   .brand { display: flex; flex: 0 0 auto; width: 93.458px; height: 40px; margin-right: 40px; }
   .brand img { width: 100%; height: 100%; object-fit: contain; }
   nav ul { display: flex; gap: 28px; margin: 0; padding: 0; list-style: none; font-size: 16px; font-weight: 500; }
+  nav a { color: #615c5f; text-decoration: none; }
+  nav [aria-current='page'] {
+    color: ${({ theme }) => theme.schoolMap.color.accent};
+    font-weight: 700;
+  }
   .account { display: flex; align-items: center; gap: 12px; margin-left: auto; }
   p { display: inline-flex; align-items: center; gap: 8px; margin: 0; color: #474446; font-size: 14px; }
   svg { width: 20px; height: 20px; }
@@ -36,16 +42,18 @@ const HeaderContainer = styled.header`
 `
 
 export default function Header({ brand, navigationLabel, userName, userRole, variant = 'user', onLogout, loggingOut }) {
-  const navigationItems = variant === 'admin'
-    ? [navigationLabel, '지도 관리']
-    : [navigationLabel]
-
   return (
     <HeaderContainer>
       <div className="brand"><img src={logo} alt={brand} /></div>
       <nav aria-label="주요 메뉴">
         <ul>
-          {navigationItems.map((item) => <li key={item}>{item}</li>)}
+          {variant === 'admin' && (
+            <>
+              <li><NavLink to="/manager/reports">교내 지도</NavLink></li>
+              <li><NavLink to="/manager/map" end>지도 관리</NavLink></li>
+            </>
+          )}
+          {(variant !== 'admin' || navigationLabel !== '교내 지도') && <li aria-current="page">{navigationLabel}</li>}
         </ul>
       </nav>
       <div className="account">

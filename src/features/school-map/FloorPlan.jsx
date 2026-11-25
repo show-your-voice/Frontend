@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
+import sparkle from '../../assets/auth/sparkle.svg'
 import PlaceDropdown from './PlaceDropdown.jsx'
 import CreativeFloorPlan from './CreativeFloorPlan.jsx'
 import { getPreviewFloorPlan } from './floorPlanRooms.js'
@@ -10,7 +11,7 @@ const MapArea = styled.section`
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  padding: ${({ $hasFloorPlan }) => $hasFloorPlan ? '10px' : '0'};
+  padding: ${({ $hasFloorPlan, $management }) => $hasFloorPlan && !$management ? '10px' : '0'};
 `
 
 const MapHeader = styled.div`
@@ -20,6 +21,7 @@ const MapHeader = styled.div`
   margin-bottom: 20px;
 
   h1 { margin: 0 auto 0 0; font-size: ${({ theme }) => theme.schoolMap.font.heading}; font-weight: ${({ theme }) => theme.schoolMap.font.headingWeight}; line-height: 1.4; }
+  h1 img { display: inline-block; width: 19.2px; height: 19.2px; margin-left: 8px; vertical-align: middle; }
 
   @media (max-width: 720px) { flex-wrap: wrap; h1 { width: 100%; } }
 `
@@ -48,7 +50,7 @@ const PlanViewport = styled.div`
   position: relative;
   display: flex;
   flex: 1;
-  min-height: 0;
+  min-height: ${({ $management }) => $management ? '300px' : '0'};
 `
 
 const PlanFrame = styled.div`
@@ -58,9 +60,12 @@ const PlanFrame = styled.div`
   overflow: auto;
   scrollbar-gutter: ${({ $hasFloorPlan }) => $hasFloorPlan ? 'stable' : 'auto'};
   background: ${({ theme }) => theme.schoolMap.color.surface};
+  ${({ $management }) => $management && `
+    border-radius: 28px;
+  `}
 
   @media (max-width: 980px) {
-    min-height: ${({ $hasFloorPlan }) => $hasFloorPlan ? 'max(264px, calc(100dvh - 216px))' : '280px'};
+    min-height: ${({ $hasFloorPlan, $management }) => $hasFloorPlan && !$management ? 'max(264px, calc(100dvh - 216px))' : '280px'};
   }
 `
 
@@ -118,6 +123,7 @@ function clampZoom(value) {
 export default function FloorPlan({
   floorPlaces, quickPlaces, selectedPlaceId, selectedRoom, roomCounts, onPlaceChange, onRoomSelect, onPinSelect,
   usePreview, floorResult, placesLoading, placesError, onRetryPlaces, onRetryFloor, roomIdsByName, roomCountsByName,
+  management, renderRoomEditor, mapActions,
 }) {
   const frameRef = useRef(null)
   const places = [...floorPlaces, ...quickPlaces]
@@ -135,14 +141,14 @@ export default function FloorPlan({
   const livePlanValid = Number.isInteger(liveData?.gridCols) && liveData.gridCols > 0 &&
     Number.isInteger(liveData?.gridRows) && liveData.gridRows > 0 && Array.isArray(liveData.rooms) &&
     liveData.rooms.every((room) => room?.id != null && typeof room.name === 'string' && Array.isArray(room.cells))
-  const fallback = !usePreview && floorResult && (floorResult.error || liveData == null || (isFloor && !livePlanValid))
+  const fallback = !management && !usePreview && floorResult && (floorResult.error || liveData == null || (isFloor && !livePlanValid))
   const data = usePreview || fallback ? getPreviewFloorPlan(selectedPlaceId, building, floor) : floorResult?.data
   const validPlan = Number.isInteger(data?.gridCols) && data.gridCols > 0 &&
     Number.isInteger(data.gridRows) && data.gridRows > 0 && Array.isArray(data.rooms) &&
     data.rooms.every((room) => room?.id != null && typeof room.name === 'string' && Array.isArray(room.cells))
   const hasFloorPlan = validPlan
   const title = building === '창의관' ? `${floor}층` : selectedPlace?.name
-  const expectsPlan = !usePreview && isFloor
+  const expectsPlan = !usePreview && (isFloor || (management && selectedPlace))
   const noGrid = data?.gridRows === null && data?.gridCols === null
   let emptyMessage = selectedPlace ? '표시할 평면도가 없습니다.' : '조회할 장소가 없습니다.'
   let retry
@@ -160,7 +166,7 @@ export default function FloorPlan({
 
   useEffect(() => {
     const frame = frameRef.current
-    if (!frame || !hasFloorPlan) return
+    if (!frame || !hasFloorPlan || management) return
 
     function zoomWithWheel(event) {
       if (event.deltaY === 0 || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return
@@ -173,19 +179,22 @@ export default function FloorPlan({
 
     frame.addEventListener('wheel', zoomWithWheel, { passive: false })
     return () => frame.removeEventListener('wheel', zoomWithWheel)
-  }, [hasFloorPlan])
+  }, [hasFloorPlan, management])
 
   const zoomLabel = Math.round(zoom)
+  const zoomOut = () => setZoom((value) => clampZoom((Math.ceil(Math.round(value) / zoomStep) - 1) * zoomStep))
+  const zoomIn = () => setZoom((value) => clampZoom((Math.floor(Math.round(value) / zoomStep) + 1) * zoomStep))
 
   return (
-    <MapArea $hasFloorPlan={hasFloorPlan}>
+    <MapArea $hasFloorPlan={hasFloorPlan} $management={management}>
       <MapHeader>
-        <h1>교내 지도 ✦</h1>
+        <h1>{management ? <>교내 지도 커스텀<img src={sparkle} alt="" /></> : '교내 지도 ✦'}</h1>
         {floorPlaces.length > 0 && <PlaceDropdown places={floorPlaces} selectedPlaceId={selectedPlaceId} onSelect={onPlaceChange} />}
         {quickPlaces.map((place) => <Chip key={place.id} type="button" aria-pressed={place.id === selectedPlaceId} onClick={() => onPlaceChange(place.id)}>{place.name}</Chip>)}
       </MapHeader>
-      <PlanViewport ref={frameRef}>
-        <PlanFrame $hasFloorPlan={hasFloorPlan} aria-label={`${selectedPlace?.name ?? '선택한 장소'} 평면도`}>
+      <PlanViewport ref={frameRef} $management={management}>
+        {mapActions}
+        <PlanFrame $hasFloorPlan={hasFloorPlan} $management={management} aria-label={`${selectedPlace?.name ?? '선택한 장소'} 평면도`}>
           {hasFloorPlan ? (
             <CreativeFloorPlan
               title={title}
@@ -197,6 +206,8 @@ export default function FloorPlan({
               onRoomSelect={fallback ? (_, name) => onRoomSelect(roomIdsByName.get(name), name) : onRoomSelect}
               onPinSelect={onPinSelect}
               roomIdsByName={fallback ? roomIdsByName : undefined}
+              renderRoomEditor={renderRoomEditor}
+              enlarge={management && building === '창의관'}
             />
           ) : (
             <EmptyPlan>
@@ -205,15 +216,15 @@ export default function FloorPlan({
             </EmptyPlan>
           )}
         </PlanFrame>
-        {hasFloorPlan && (
+        {hasFloorPlan && !management && (
           <ZoomControls role="group" aria-label="평면도 확대 및 축소">
-            <Chip type="button" aria-label="축소" disabled={zoom === minZoom} onClick={() => setZoom((value) => clampZoom((Math.ceil(Math.round(value) / zoomStep) - 1) * zoomStep))}>−</Chip>
+            <Chip type="button" aria-label="축소" disabled={zoom === minZoom} onClick={zoomOut}>−</Chip>
             <Chip type="button" aria-label={`현재 ${zoomLabel}%, 기본 크기로 되돌리기`} onClick={() => setZoom(defaultZoom)}>{zoomLabel}%</Chip>
-            <Chip type="button" aria-label="확대" disabled={zoom === maxZoom} onClick={() => setZoom((value) => clampZoom((Math.floor(Math.round(value) / zoomStep) + 1) * zoomStep))}>+</Chip>
+            <Chip type="button" aria-label="확대" disabled={zoom === maxZoom} onClick={zoomIn}>+</Chip>
           </ZoomControls>
         )}
       </PlanViewport>
-      {hasFloorPlan && <Legend><LegendItem $level="low">1–2건</LegendItem><LegendItem $level="mid">3–4건</LegendItem><LegendItem $level="high">5건 이상</LegendItem></Legend>}
+      {hasFloorPlan && !management && <Legend><LegendItem $level="low">1–2건</LegendItem><LegendItem $level="mid">3–4건</LegendItem><LegendItem $level="high">5건 이상</LegendItem></Legend>}
     </MapArea>
   )
 }
