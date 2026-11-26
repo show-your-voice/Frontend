@@ -15,6 +15,7 @@ export default defineConfig({
     proxy: {
       '/api': backend,
       '/images/posts': backend,
+      '/images/rooms': backend,
     },
   },
 })
