@@ -51,9 +51,10 @@ export default function Header({ brand, navigationLabel, userName, userRole, var
             <>
               <li><NavLink to="/manager/reports">교내 지도</NavLink></li>
               <li><NavLink to="/manager/map" end>지도 관리</NavLink></li>
+              <li><NavLink to="/manager/assignment-rules" end>담당 규칙</NavLink></li>
             </>
           )}
-          {(variant !== 'admin' || navigationLabel !== '교내 지도') && <li aria-current="page">{navigationLabel}</li>}
+          {(variant !== 'admin' || !['교내 지도', '담당 규칙'].includes(navigationLabel)) && <li aria-current="page">{navigationLabel}</li>}
         </ul>
       </nav>
       <div className="account">
