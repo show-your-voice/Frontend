@@ -58,6 +58,15 @@ const Date = styled.span`
   color: ${({ theme }) => theme.report.color.muted};
 `
 
+const Clock = styled.span`
+  display: block;
+  font-size: 0.8em;
+`
+
+function formatDate(value) {
+  return value.slice(5, 10).replace('-', '.')
+}
+
 export default function ReportStatusTimeline({ currentStatus, receivedAt, startedAt, completedAt }) {
   const steps = [
     { status: 'received', label: '접수', date: receivedAt },
@@ -70,7 +79,14 @@ export default function ReportStatusTimeline({ currentStatus, receivedAt, starte
       {steps.map(({ status, label, date }) => (
         <Step key={status} $current={status === currentStatus} aria-current={status === currentStatus ? 'step' : undefined}>
           {label}
-          <Date>{date ? <time dateTime={date}>{date.slice(5, 10).replace('-', '.')}</time> : '—'}</Date>
+          <Date>
+            {date ? (
+              <time dateTime={date}>
+                {formatDate(date)}
+                {date.length > 10 && <Clock>{date.slice(11, 16)}</Clock>}
+              </time>
+            ) : '—'}
+          </Date>
         </Step>
       ))}
     </Timeline>
