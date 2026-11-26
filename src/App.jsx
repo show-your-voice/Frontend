@@ -455,10 +455,10 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
   }, [activePlaceReports, roomsById])
   const roomSelection = selectedRoom?.placeId === selectedPlaceId && selectedRoom?.isLive === isLive ? selectedRoom : null
   const placeReports = useMemo(
-    () => (roomSelection === null ? activePlaceReports : selectedPlaceReports)
+    () => selectedPlaceReports
       .filter((report) => roomSelection === null || roomSelection.id === (report.roomId ?? report.room_id))
       .map((report) => toReportCard({ placeName: currentPlace?.name, roomName: roomsById.get(report.room_id)?.name, ...report })),
-    [activePlaceReports, currentPlace?.name, roomSelection, roomsById, selectedPlaceReports],
+    [currentPlace?.name, roomSelection, roomsById, selectedPlaceReports],
   )
 
   function changePlace(placeId) {
