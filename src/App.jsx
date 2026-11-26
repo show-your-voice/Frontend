@@ -7,6 +7,7 @@ import OutlineButton from './components/OutlineButton.jsx'
 import Toast from './components/Toast.jsx'
 import { fetchSession, logout } from './features/auth/authApi.js'
 import LoginForm from './features/auth/LoginForm.jsx'
+import { loginRedirectPath } from './features/auth/loginRedirect.js'
 import SignupForm from './features/auth/SignupForm.jsx'
 import ManagerInfoPage from './features/managers/ManagerInfoPage.jsx'
 import FloorPlan from './features/school-map/FloorPlan.jsx'
@@ -148,15 +149,7 @@ function LoginPage() {
   const [searchParams] = useSearchParams()
 
   function handleLogin(user) {
-    const next = searchParams.get('next') ?? ''
-    const [nextPath] = next.split('?')
-    if (/^\/reports\/\d+\/edit\/?$/.test(nextPath)) {
-      navigate(next, { replace: true })
-      return
-    }
-    const managerPath = /^\/manager\/(?:reports(?:\/\d+(?:\/edit)?)?|map)\/?$/.test(nextPath) ? next : '/manager/reports'
-    const home = user.role === 'TEACHER' ? managerPath : '/'
-    navigate(next === '/managers' ? next : home, { replace: true })
+    navigate(loginRedirectPath(searchParams.get('next') ?? '', user.role), { replace: true })
   }
 
   return <LoginForm onLogin={handleLogin} onSignupClick={() => navigate('/signup')} />
@@ -618,10 +611,17 @@ const router = createBrowserRouter([
   {
     element: <HeaderLayout />,
     children: [
-      { path: '/reports/:reportId', element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
+      {
+        loader: loadSession,
+        HydrateFallback: SessionLoading,
+        ErrorBoundary: SessionError,
+        children: [
+          { path: '/reports/:reportId', element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
+          { path: '/reports/new', ...reportFormRoute, handle: { header: { navigationLabel: '신고 작성' } } },
+          { index: true, element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
+        ],
+      },
       { path: '/reports/:reportId/edit', ...editRoute },
-      { path: '/reports/new', ...reportFormRoute, handle: { header: { navigationLabel: '신고 작성' } } },
-      { index: true, element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
       {
         id: 'manager',
         path: '/manager/reports',
