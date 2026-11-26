@@ -138,7 +138,7 @@ export default function ReportDetail({ report, onBack, onDelete, onAddCoAssignee
       <History>
         <ReportStatusTimeline
           currentStatus={report.status.tone}
-          receivedAt={report.receivedAt || report.date}
+          receivedAt={report.receivedAt}
           startedAt={report.startedAt}
           completedAt={report.completedAt}
         />

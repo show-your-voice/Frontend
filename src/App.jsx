@@ -20,7 +20,7 @@ import ReportList from './features/reports/ReportList.jsx'
 import ManagerReportDetailPage from './features/reports/ManagerReportDetailPage.jsx'
 import ReportDetailPanel from './features/reports/ReportDetailPanel.jsx'
 import { toReportFieldErrors } from './features/reports/reportFormValidation.js'
-import { createReport, fetchActivePlaceReports, fetchAssignedReports, fetchReportDetail, fetchReportPage, fetchRooms, paginateReports, updateReport } from './features/reports/reportApi.js'
+import { createReport, fetchActivePlaceReports, fetchAssignedReports, fetchReportDetail, fetchReportPage, fetchRooms, paginateReports, reportStatuses, updateReport } from './features/reports/reportApi.js'
 import { mapReportPreviewData } from './features/reports/reportPreviewData.js'
 
 const ReportPage = styled.main`
@@ -367,26 +367,20 @@ function ReportEditor({ rooms, report, detailPath, onCancel }) {
   )
 }
 
-function toReportCard(report) {
-  const statusByValue = {
-    UNRESOLVED: { tone: 'received', label: '접수' },
-    IN_PROGRESS: { tone: 'inProgress', label: '처리 중' },
-    RESOLVED: { tone: 'completed', label: '처리 완료' },
-  }
-
+function toPreviewReportCard(report, location) {
   return {
     id: report.id,
     title: report.title,
     description: report.content,
-    date: (report.receivedAt ?? report.created_at)?.slice(0, 10) ?? '',
-    author: report.authorName ?? report.author_name ?? '',
-    location: [report.placeName, report.roomName].filter(Boolean).join(' · '),
-    status: statusByValue[report.status?.code ?? report.status] ?? report.status,
+    date: report.created_at.slice(0, 10),
+    author: report.author_name,
+    location,
+    status: reportStatuses.find(({ code }) => code === report.status),
   }
 }
 
-function isActiveReport(report) {
-  return ['UNRESOLVED', 'IN_PROGRESS'].includes(report.status?.code ?? report.status)
+function isActivePreviewReport(report) {
+  return ['UNRESOLVED', 'IN_PROGRESS'].includes(report.status)
 }
 
 function mapRequestError(error, subject) {
@@ -478,7 +472,10 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
       : mapReportPreviewData.filter((report) => roomsById.get(report.room_id)?.place_id === selectedPlaceId),
     [isLive, reportsResult, roomsById, selectedPlaceId],
   )
-  const activePlaceReports = useMemo(() => selectedPlaceReports.filter(isActiveReport), [selectedPlaceReports])
+  const activePlaceReports = useMemo(
+    () => isLive ? selectedPlaceReports : selectedPlaceReports.filter(isActivePreviewReport),
+    [isLive, selectedPlaceReports],
+  )
   const roomCounts = useMemo(() => {
     const counts = new Map()
     for (const report of activePlaceReports) {
@@ -528,7 +525,7 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
     if (isLive) return null
     const reports = selectedPlaceReports
       .filter((report) => roomSelection === null || roomSelection.id === report.room_id)
-      .map((report) => toReportCard({ placeName: currentPlace?.name, roomName: roomsById.get(report.room_id)?.name, ...report }))
+      .map((report) => toPreviewReportCard(report, [currentPlace?.name, roomsById.get(report.room_id)?.name].filter(Boolean).join(' · ')))
       .filter((report) => selectedStatus === 'all' || report.status.tone === selectedStatus)
     return paginateReports(reports, page)
   }, [currentPlace?.name, isLive, page, roomSelection, roomsById, selectedPlaceReports, selectedStatus])
