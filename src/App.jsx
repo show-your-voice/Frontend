@@ -13,6 +13,7 @@ import ManagerInfoPage from './features/managers/ManagerInfoPage.jsx'
 import FloorPlan from './features/school-map/FloorPlan.jsx'
 import MapManagementPage from './features/school-map/MapManagementPage.jsx'
 import PlaceActionModal from './features/school-map/PlaceActionModal.jsx'
+import RoomRoadviewPage from './features/school-map/RoomRoadviewPage.jsx'
 import { schoolMapPreviewData, splitPlacesByDisplayType } from './features/school-map/schoolMapPreviewData.js'
 import ReportForm from './features/reports/ReportForm.jsx'
 import ReportList from './features/reports/ReportList.jsx'
@@ -401,6 +402,7 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
   const [listPage, setListPage] = useState({ key: '', page: 0 })
   const [selectedRoom, setSelectedRoom] = useState(() => location.state?.roomId ? { id: location.state.roomId, placeId: location.state.placeId, isLive: true } : null)
   const [actionRoom, setActionRoom] = useState(null)
+  const [roadviewRoom, setRoadviewRoom] = useState(null)
   const [detailRoom, setDetailRoom] = useState(null)
   const [selectedPlace, setSelectedPlace] = useState(() => pickPlaceId != null ? { id: pickPlaceId, isLive: true } : null)
   const [selectedStatus, setSelectedStatus] = useState('all')
@@ -540,6 +542,19 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
     if (reportId) navigate('/')
   }
 
+  if (roadviewRoom) {
+    return (
+      <SchoolMapLayout>
+        <RoomRoadviewPage
+          room={roadviewRoom}
+          roomId={isLive ? roadviewRoom.id : undefined}
+          onExit={() => setRoadviewRoom(null)}
+          onReport={() => navigate('/reports/new', { state: { roomId: isLive ? roadviewRoom.id : undefined } })}
+        />
+      </SchoolMapLayout>
+    )
+  }
+
   return (
     <SchoolMapLayout>
       <SchoolMapContent>
@@ -591,6 +606,10 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
         <PlaceActionModal
           roomName={actionRoom.name}
           onClose={() => setActionRoom(null)}
+          onRoadview={() => {
+            setRoadviewRoom(actionRoom)
+            setActionRoom(null)
+          }}
           onReport={() => navigate('/reports/new', { state: { roomId: isLive ? actionRoom.id : undefined } })}
         />
       )}

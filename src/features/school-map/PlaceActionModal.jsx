@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import styled from 'styled-components'
 import Modal from '../../components/Modal.jsx'
 import Button from '../../components/Button.jsx'
@@ -39,23 +38,14 @@ const Actions = styled.div`
   margin-top: 20px;
 `
 
-const Notice = styled.p`
-  margin: 12px 0 0;
-  font-size: 13px;
-  color: ${({ theme }) => theme.auth.color.textPrimary};
-`
-
-export default function PlaceActionModal({ roomName, onClose, onReport }) {
-  const [showNotice, setShowNotice] = useState(false)
-
+export default function PlaceActionModal({ roomName, onClose, onRoadview, onReport }) {
   return (
     <ActionModal title={roomName} onClose={onClose}>
       <Close type="button" aria-label="닫기" onClick={onClose}><img src={closeIcon} alt="" /></Close>
       <Actions>
-        <Button variant="neutral" fullWidth onClick={() => setShowNotice(true)}>로드뷰 보기</Button>
+        <Button variant="neutral" fullWidth onClick={onRoadview}>로드뷰 보기</Button>
         <Button onClick={onReport}>불편 신고하기</Button>
       </Actions>
-      {showNotice && <Notice role="status">로드뷰는 준비 중입니다.</Notice>}
     </ActionModal>
   )
 }
