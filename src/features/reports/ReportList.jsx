@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import styled from 'styled-components'
 import FilterChip from '../../components/FilterChip.jsx'
 import OutlineButton from '../../components/OutlineButton.jsx'
+import Pagination from '../../components/Pagination.jsx'
 import ReportCard from './ReportCard.jsx'
 
 const filters = [
@@ -102,7 +103,12 @@ export default function ReportList({
   errorMessage,
   onRetry,
   emptyMessage = '등록된 신고가 없어요.',
+  totalCount,
+  page = 0,
+  totalPages = 1,
+  onPageChange,
 }) {
+  const panelRef = useRef(null)
   const headingRef = useRef(null)
   const focusedReportRef = useRef(null)
   useEffect(() => {
@@ -112,6 +118,12 @@ export default function ReportList({
     target?.focus()
   }, [focusReportId])
 
+  function changePage(nextPage) {
+    onPageChange?.(nextPage)
+    panelRef.current?.scrollTo({ top: 0 })
+    headingRef.current?.focus({ preventScroll: true })
+  }
+
   const visibleReports = selectedStatus === 'all'
     ? reports
     : reports.filter((report) => report.status.tone === selectedStatus)
@@ -120,10 +132,10 @@ export default function ReportList({
     : '선택한 상태의 신고가 없어요.'
 
   return (
-    <Panel aria-labelledby="report-list-heading">
+    <Panel ref={panelRef} aria-labelledby="report-list-heading">
       <HeadingRow>
         <Heading id="report-list-heading" ref={headingRef} tabIndex={-1}>
-          {title} <Count aria-live="polite">{visibleReports.length}</Count>
+          {title} <Count aria-live="polite">{totalCount ?? visibleReports.length}</Count>
         </Heading>
         {headingAction}
       </HeadingRow>
@@ -166,6 +178,9 @@ export default function ReportList({
             </li>
           ))}
         </List>
+      )}
+      {!isLoading && !errorMessage && onPageChange && (
+        <Pagination page={page} totalPages={totalPages} onPageChange={changePage} label="신고 목록 페이지" />
       )}
     </Panel>
   )

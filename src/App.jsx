@@ -18,7 +18,7 @@ import ReportForm from './features/reports/ReportForm.jsx'
 import ReportList from './features/reports/ReportList.jsx'
 import ManagerReportDetailPage from './features/reports/ManagerReportDetailPage.jsx'
 import ReportDetailPanel from './features/reports/ReportDetailPanel.jsx'
-import { createReport, fetchManagerReports, fetchReportDetail, fetchRooms, updateReport } from './features/reports/reportApi.js'
+import { createReport, fetchActivePlaceReports, fetchAssignedReports, fetchReportDetail, fetchReportPage, fetchRooms, paginateReports, updateReport } from './features/reports/reportApi.js'
 import { mapReportPreviewData } from './features/reports/reportPreviewData.js'
 
 const ReportPage = styled.main`
@@ -397,6 +397,8 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
   const [reportsAttempt, setReportsAttempt] = useState(0)
   const [liveFloor, setLiveFloor] = useState(null)
   const [liveReports, setLiveReports] = useState(null)
+  const [liveList, setLiveList] = useState(null)
+  const [listPage, setListPage] = useState({ key: '', page: 0 })
   const [selectedRoom, setSelectedRoom] = useState(() => location.state?.roomId ? { id: location.state.roomId, placeId: location.state.placeId, isLive: true } : null)
   const [actionRoom, setActionRoom] = useState(null)
   const [detailRoom, setDetailRoom] = useState(null)
@@ -439,9 +441,8 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
   useEffect(() => {
     if (!isLive || selectedPlaceId == null) return
     let ignore = false
-    request(`/api/posts?placeId=${selectedPlaceId}`)
+    fetchActivePlaceReports(selectedPlaceId)
       .then((data) => {
-        if (!Array.isArray(data)) throw new Error('Invalid reports response')
         if (!ignore) setLiveReports({ placeId: selectedPlaceId, attempt: reportsAttempt, data })
       })
       .catch((error) => {
@@ -487,12 +488,30 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
     ?? (isLive ? undefined : roomsById.get(roomSelection.id)?.name)
     ?? '선택한 실'
   )
-  const placeReports = useMemo(
-    () => selectedPlaceReports
-      .filter((report) => roomSelection === null || roomSelection.id === (report.roomId ?? report.room_id))
-      .map((report) => toReportCard({ placeName: currentPlace?.name, roomName: roomsById.get(report.room_id)?.name, ...report })),
-    [currentPlace?.name, roomSelection, roomsById, selectedPlaceReports],
-  )
+  const listKey = `${selectedPlaceId}:${roomSelection?.id ?? ''}:${selectedStatus}`
+  const page = listPage.key === listKey ? listPage.page : 0
+  const showList = !renderReports && !reportId
+  const listQueryKey = `${listKey}:${page}:${reportsAttempt}`
+  const liveListResult = liveList?.key === listQueryKey ? liveList : null
+
+  useEffect(() => {
+    if (!isLive || !showList || selectedPlaceId == null) return
+    let ignore = false
+    fetchReportPage({ placeId: selectedPlaceId, roomId: roomSelection?.id, status: selectedStatus, page })
+      .then((result) => { if (!ignore) setLiveList({ key: listQueryKey, ...result }) })
+      .catch((error) => { if (!ignore) setLiveList({ key: listQueryKey, error: mapRequestError(error, '신고 목록을') }) })
+    return () => { ignore = true }
+  }, [isLive, listQueryKey, page, roomSelection?.id, selectedPlaceId, selectedStatus, showList])
+
+  const previewList = useMemo(() => {
+    if (isLive) return null
+    const reports = selectedPlaceReports
+      .filter((report) => roomSelection === null || roomSelection.id === report.room_id)
+      .map((report) => toReportCard({ placeName: currentPlace?.name, roomName: roomsById.get(report.room_id)?.name, ...report }))
+      .filter((report) => selectedStatus === 'all' || report.status.tone === selectedStatus)
+    return paginateReports(reports, page)
+  }, [currentPlace?.name, isLive, page, roomSelection, roomsById, selectedPlaceReports, selectedStatus])
+  const reportList = isLive ? liveListResult : previewList
 
   function changePlace(placeId) {
     if (placeId !== selectedPlaceId) {
@@ -545,7 +564,9 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
           />
         ) : (
           <ReportList
-            reports={placeReports} selectedStatus={selectedStatus} onStatusChange={setSelectedStatus}
+            reports={reportList?.reports ?? []} selectedStatus={selectedStatus} onStatusChange={setSelectedStatus}
+            totalCount={reportList?.totalCount} page={page} totalPages={reportList?.totalPages}
+            onPageChange={(nextPage) => setListPage({ key: listKey, page: nextPage })}
             headingAction={roomSelection && (
               <RoomFilterChip type="button" aria-label={`${roomFilterName} 필터 해제하고 전체 보기`} onClick={() => setSelectedRoom(null)}>
                 <span>{roomFilterName}만 보는 중</span>
@@ -553,9 +574,9 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
               </RoomFilterChip>
             )}
             onSelectReport={isLive && !onPickRoom ? (report) => navigate(`/reports/${report.id}`) : undefined}
-            isLoading={placesLoading || (isLive && selectedPlaceId != null && !reportsResult)}
-            errorMessage={placesError || reportsResult?.error}
-            onRetry={reportsResult?.error ? () => setReportsAttempt((attempt) => attempt + 1) : undefined}
+            isLoading={placesLoading || (isLive && selectedPlaceId != null && !liveListResult)}
+            errorMessage={placesError || liveListResult?.error}
+            onRetry={liveListResult?.error ? () => setReportsAttempt((attempt) => attempt + 1) : undefined}
             emptyMessage={selectedPlaceId == null ? '조회할 장소가 없습니다.' : undefined}
           />
         )}
@@ -577,31 +598,58 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
   )
 }
 
+function ManagerReportList({ placeId, placeName, roomId, assignedOnly, selectedStatus, ...listProps }) {
+  const [attempt, setAttempt] = useState(0)
+  const [listPage, setListPage] = useState({ key: '', page: 0 })
+  const [result, setResult] = useState(null)
+  const filterKey = `${assignedOnly}:${placeId}:${roomId ?? ''}:${selectedStatus}`
+  const page = listPage.key === filterKey ? listPage.page : 0
+  const queryKey = `${assignedOnly ? `${assignedOnly}:${placeId}` : `${filterKey}:${page}`}:${attempt}`
+  const currentResult = result?.key === queryKey ? result : null
+
+  useEffect(() => {
+    if (placeId == null) return
+    let ignore = false
+    const load = assignedOnly
+      ? fetchAssignedReports()
+      : fetchReportPage({ placeId, roomId, status: selectedStatus, page })
+    load
+      .then((data) => { if (!ignore) setResult({ key: queryKey, data }) })
+      .catch((error) => { if (!ignore) setResult({ key: queryKey, errorMessage: mapRequestError(error, '신고 목록을') }) })
+    return () => { ignore = true }
+  }, [assignedOnly, page, placeId, queryKey, roomId, selectedStatus])
+
+  const reportList = useMemo(() => {
+    if (!currentResult?.data) return null
+    if (!assignedOnly) return currentResult.data
+    const reports = currentResult.data.filter((report) => report.placeName === placeName &&
+      (roomId == null || report.roomId === roomId) &&
+      (selectedStatus === 'all' || report.status.tone === selectedStatus))
+    return paginateReports(reports, page)
+  }, [assignedOnly, currentResult, page, placeName, roomId, selectedStatus])
+
+  return (
+    <ReportList
+      {...listProps}
+      reports={reportList?.reports ?? []}
+      selectedStatus={selectedStatus}
+      totalCount={reportList?.totalCount}
+      page={page}
+      totalPages={reportList?.totalPages}
+      onPageChange={(nextPage) => setListPage({ key: filterKey, page: nextPage })}
+      isLoading={placeId != null && !currentResult}
+      errorMessage={currentResult?.errorMessage}
+      onRetry={() => setAttempt((value) => value + 1)}
+    />
+  )
+}
+
 function ManagerReportsPage({ usePreview }) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [requestVersion, setRequestVersion] = useState(0)
-  const [result, setResult] = useState(null)
   const assignedOnly = searchParams.get('scope') !== 'all'
   const statusParam = searchParams.get('status')
   const selectedStatus = ['received', 'inProgress', 'completed'].includes(statusParam) ? statusParam : 'all'
-  const currentResult = result?.assignedOnly === assignedOnly && result.version === requestVersion ? result : null
-
-  useEffect(() => {
-    let ignore = false
-
-    fetchManagerReports({ assignedOnly })
-      .then((reports) => {
-        if (!ignore) setResult({ assignedOnly, version: requestVersion, reports })
-      })
-      .catch((error) => {
-        if (!ignore) setResult({ assignedOnly, version: requestVersion, errorMessage: mapRequestError(error, '신고 목록을') })
-      })
-
-    return () => {
-      ignore = true
-    }
-  }, [assignedOnly, requestVersion])
 
   function updateFilter(name, value) {
     const next = new URLSearchParams(searchParams)
@@ -611,9 +659,13 @@ function ManagerReportsPage({ usePreview }) {
   }
 
   return (
-    <SchoolMapContentPage usePreview={usePreview} renderReports={({ placeName, roomId }) => (
-        <ReportList
-          reports={(currentResult?.reports ?? []).filter((report) => report.placeName === placeName && (roomId == null || report.roomId === roomId))}
+    <SchoolMapContentPage usePreview={usePreview} renderReports={({ placeId, placeName, roomId }) => (
+        <ManagerReportList
+          placeId={placeId}
+          placeName={placeName}
+          roomId={roomId}
+          assignedOnly={assignedOnly}
+          selectedStatus={selectedStatus}
           title={assignedOnly ? '내 담당 신고' : '전체 불편 신고'}
           headingAction={(
             <AssignedReportsToggle>
@@ -625,12 +677,8 @@ function ManagerReportsPage({ usePreview }) {
               내 담당만 보기
             </AssignedReportsToggle>
           )}
-          selectedStatus={selectedStatus}
           onStatusChange={(status) => updateFilter('status', status === 'all' ? null : status)}
           onSelectReport={(report) => navigate({ pathname: `/manager/reports/${report.id}`, search: searchParams.toString() })}
-          isLoading={!currentResult}
-          errorMessage={currentResult?.errorMessage}
-          onRetry={() => setRequestVersion((version) => version + 1)}
           emptyMessage={assignedOnly ? '내게 배정된 신고가 없어요.' : '조회된 신고가 없어요.'}
         />
     )} />
