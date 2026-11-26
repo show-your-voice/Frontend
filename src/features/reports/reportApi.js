@@ -73,8 +73,46 @@ function toReportDetail(report) {
   }
 }
 
-export async function fetchManagerReports({ assignedOnly }) {
-  const reports = await request(assignedOnly ? '/api/posts/assigned' : '/api/posts')
+export const REPORT_PAGE_SIZE = 10
+const ACTIVE_REPORTS_LIMIT = 2000
+
+const statusCodesByTone = Object.fromEntries(reportStatuses.map(({ code, tone }) => [tone, code]))
+
+function postsQuery({ placeId, roomId, status, page, size }) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) })
+  if (placeId != null) params.set('placeId', placeId)
+  if (roomId != null) params.set('roomId', roomId)
+  if (status) params.set('status', status)
+  return `/api/posts?${params}`
+}
+
+export async function fetchReportPage({ placeId, roomId, status, page = 0, size = REPORT_PAGE_SIZE }) {
+  const data = await request(postsQuery({ placeId, roomId, status: statusCodesByTone[status], page, size }))
+  if (!Array.isArray(data?.posts)) throw new Error('신고 목록 응답 형식이 올바르지 않습니다.')
+  return { reports: data.posts.map(toReportCard), totalCount: data.totalCount, totalPages: data.totalPages }
+}
+
+export async function fetchActivePlaceReports(placeId) {
+  const pages = await Promise.all(['UNRESOLVED', 'IN_PROGRESS'].map((status) => (
+    request(postsQuery({ placeId, status, page: 0, size: ACTIVE_REPORTS_LIMIT }))
+  )))
+  if (!pages.every((data) => Array.isArray(data?.posts))) throw new Error('신고 목록 응답 형식이 올바르지 않습니다.')
+  return pages.flatMap((data) => data.posts)
+}
+
+export function paginateReports(reports, page, size = REPORT_PAGE_SIZE) {
+  const totalPages = Math.max(Math.ceil(reports.length / size), 1)
+  const currentPage = Math.min(page, totalPages - 1)
+  return {
+    reports: reports.slice(currentPage * size, (currentPage + 1) * size),
+    totalCount: reports.length,
+    totalPages,
+    page: currentPage,
+  }
+}
+
+export async function fetchAssignedReports() {
+  const reports = await request('/api/posts/assigned')
   return reports.map(toReportCard)
 }
 
