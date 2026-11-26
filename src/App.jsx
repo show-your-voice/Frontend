@@ -61,6 +61,33 @@ const SchoolMapContent = styled.div`
   @media (max-width: 980px) { height: auto; min-height: 100%; grid-template-columns: 1fr; overflow: visible; }
 `
 
+const RoomFilterChip = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.space[1]};
+  max-width: 100%;
+  padding: ${({ theme }) => theme.space[1]} ${({ theme }) => theme.space[3]};
+  border: 0;
+  border-radius: ${({ theme }) => theme.radius.full};
+  background: ${({ theme }) => theme.reportForm.color.optionActive};
+  color: ${({ theme }) => theme.reportForm.color.optionActiveText};
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+
+  span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${({ theme }) => theme.reportForm.color.optionActiveText};
+    outline-offset: 2px;
+  }
+`
+
 const PickRoomGuide = styled.div`
   position: fixed;
   top: 10px;
@@ -454,6 +481,12 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
     return counts
   }, [activePlaceReports, roomsById])
   const roomSelection = selectedRoom?.placeId === selectedPlaceId && selectedRoom?.isLive === isLive ? selectedRoom : null
+  const roomFilterName = roomSelection && (
+    selectedPlaceReports.find((report) => (report.roomId ?? report.room_id) === roomSelection.id)?.roomName
+    ?? floorResult?.data?.rooms?.find((room) => room.id === roomSelection.id)?.name
+    ?? (isLive ? undefined : roomsById.get(roomSelection.id)?.name)
+    ?? '선택한 실'
+  )
   const placeReports = useMemo(
     () => selectedPlaceReports
       .filter((report) => roomSelection === null || roomSelection.id === (report.roomId ?? report.room_id))
@@ -513,6 +546,12 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
         ) : (
           <ReportList
             reports={placeReports} selectedStatus={selectedStatus} onStatusChange={setSelectedStatus}
+            headingAction={roomSelection && (
+              <RoomFilterChip type="button" aria-label={`${roomFilterName} 필터 해제하고 전체 보기`} onClick={() => setSelectedRoom(null)}>
+                <span>{roomFilterName}만 보는 중</span>
+                <span aria-hidden="true">✕</span>
+              </RoomFilterChip>
+            )}
             onSelectReport={isLive && !onPickRoom ? (report) => navigate(`/reports/${report.id}`) : undefined}
             isLoading={placesLoading || (isLive && selectedPlaceId != null && !reportsResult)}
             errorMessage={placesError || reportsResult?.error}
