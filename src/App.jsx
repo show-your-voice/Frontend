@@ -617,10 +617,17 @@ const router = createBrowserRouter([
   {
     element: <HeaderLayout />,
     children: [
-      { path: '/reports/:reportId', element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
+      {
+        loader: loadSession,
+        HydrateFallback: SessionLoading,
+        ErrorBoundary: SessionError,
+        children: [
+          { path: '/reports/:reportId', element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
+          { path: '/reports/new', ...reportFormRoute, handle: { header: { navigationLabel: '신고 작성' } } },
+          { index: true, element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
+        ],
+      },
       { path: '/reports/:reportId/edit', ...editRoute },
-      { path: '/reports/new', ...reportFormRoute, handle: { header: { navigationLabel: '신고 작성' } } },
-      { index: true, element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
       {
         id: 'manager',
         path: '/manager/reports',
