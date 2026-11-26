@@ -19,6 +19,7 @@ import ReportForm from './features/reports/ReportForm.jsx'
 import ReportList from './features/reports/ReportList.jsx'
 import ManagerReportDetailPage from './features/reports/ManagerReportDetailPage.jsx'
 import ReportDetailPanel from './features/reports/ReportDetailPanel.jsx'
+import { toReportFieldErrors } from './features/reports/reportFormValidation.js'
 import { createReport, fetchActivePlaceReports, fetchAssignedReports, fetchReportDetail, fetchReportPage, fetchRooms, paginateReports, updateReport } from './features/reports/reportApi.js'
 import { mapReportPreviewData } from './features/reports/reportPreviewData.js'
 
@@ -308,6 +309,7 @@ function ReportEditor({ rooms, report, detailPath, onCancel }) {
   const location = useLocation()
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [serverErrors, setServerErrors] = useState({})
   const [pickedRoomId, setPickedRoomId] = useState(null)
   const [pickingRoom, setPickingRoom] = useState(false)
   const room = rooms.find((item) => item.id === (pickedRoomId ?? report?.roomId ?? location.state?.roomId))
@@ -315,12 +317,23 @@ function ReportEditor({ rooms, report, detailPath, onCancel }) {
   function pickRoom(id) {
     setPickedRoomId(id)
     setPickingRoom(false)
+    clearServerError('room')
+  }
+
+  function clearServerError(name) {
+    setServerErrors((current) => {
+      if (!current[name]) return current
+      const next = { ...current }
+      delete next[name]
+      return next
+    })
   }
 
   async function submitReport(values) {
     if (submitting) return
     setSubmitting(true)
     setSubmitError('')
+    setServerErrors({})
     try {
       const saved = report ? await updateReport(report.id, values, report) : await createReport(values)
       navigate({ pathname: report ? detailPath : `/reports/${saved.id}`, search: location.search }, {
@@ -329,7 +342,13 @@ function ReportEditor({ rooms, report, detailPath, onCancel }) {
       })
     } catch (error) {
       const fallback = report ? '게시물을 수정하지 못했어요.' : '신고를 등록하지 못했어요.'
-      setSubmitError(error instanceof ApiError ? error.fieldErrors[0]?.reason ?? error.message : fallback)
+      if (error instanceof ApiError) {
+        const { fields, others } = toReportFieldErrors(error.fieldErrors)
+        setServerErrors(fields)
+        setSubmitError(others[0] ?? (Object.keys(fields).length ? '' : error.message))
+      } else {
+        setSubmitError(fallback)
+      }
       setSubmitting(false)
     }
   }
@@ -338,7 +357,7 @@ function ReportEditor({ rooms, report, detailPath, onCancel }) {
     <>
       <div hidden={pickingRoom}>
         <ReportForm room={room} initialReport={report}
-          submitting={submitting} submitError={submitError} onPickRoom={() => setPickingRoom(true)}
+          submitting={submitting} submitError={submitError} serverErrors={serverErrors} onFieldEdit={clearServerError} onPickRoom={() => setPickingRoom(true)}
           onSubmit={submitReport} onCancel={onCancel} />
       </div>
       {pickingRoom && (
