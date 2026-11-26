@@ -334,6 +334,7 @@ function toReportCard(report) {
     description: report.content,
     date: (report.receivedAt ?? report.created_at)?.slice(0, 10) ?? '',
     author: report.authorName ?? report.author_name ?? '',
+    location: [report.placeName, report.roomName].filter(Boolean).join(' · '),
     status: statusByValue[report.status?.code ?? report.status] ?? report.status,
   }
 }
@@ -456,8 +457,8 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
   const placeReports = useMemo(
     () => (roomSelection === null ? activePlaceReports : selectedPlaceReports)
       .filter((report) => roomSelection === null || roomSelection.id === (report.roomId ?? report.room_id))
-      .map(toReportCard),
-    [activePlaceReports, roomSelection, selectedPlaceReports],
+      .map((report) => toReportCard({ placeName: currentPlace?.name, roomName: roomsById.get(report.room_id)?.name, ...report })),
+    [activePlaceReports, currentPlace?.name, roomSelection, roomsById, selectedPlaceReports],
   )
 
   function changePlace(placeId) {
