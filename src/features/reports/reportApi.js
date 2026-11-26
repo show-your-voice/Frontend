@@ -62,8 +62,9 @@ function toReportDetail(report) {
     })),
     status: toReportStatus(report.status),
     date: report.receivedAt?.slice(0, 10) ?? '',
-    startedAt: report.inProgressAt?.slice(0, 10) ?? '',
-    completedAt: report.resolvedAt?.slice(0, 10) ?? '',
+    receivedAt: report.receivedAt ?? '',
+    startedAt: report.inProgressAt ?? '',
+    completedAt: report.resolvedAt ?? '',
     photos: (report.imageUrls ?? []).map((src, index) => ({
       id: `${report.id}-${index}`,
       imageUrl: src,
