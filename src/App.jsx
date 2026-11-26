@@ -154,8 +154,7 @@ function LoginPage() {
       navigate(next, { replace: true })
       return
     }
-    const managerPath = /^\/manager\/reports(?:\/\d+(?:\/edit)?)?\/?$/.test(nextPath) ? next : '/manager/reports'
-    const managerPath = /^\/manager\/(?:reports(?:\/\d+)?|map)\/?$/.test(nextPath) ? next : '/manager/reports'
+    const managerPath = /^\/manager\/(?:reports(?:\/\d+(?:\/edit)?)?|map)\/?$/.test(nextPath) ? next : '/manager/reports'
     const home = user.role === 'TEACHER' ? managerPath : '/'
     navigate(next === '/managers' ? next : home, { replace: true })
   }
