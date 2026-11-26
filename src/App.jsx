@@ -509,6 +509,7 @@ function SchoolMapContentPage({ usePreview, renderReports, pickPlaceId, onPickRo
     ?? '선택한 실'
   )
   const listKey = `${selectedPlaceId}:${roomSelection?.id ?? ''}:${selectedStatus}`
+  if (listPage.key !== listKey) setListPage({ key: listKey, page: 0 })
   const page = listPage.key === listKey ? listPage.page : 0
   const showList = !renderReports && !reportId
   const listQueryKey = `${listKey}:${page}:${reportsAttempt}`
@@ -640,6 +641,7 @@ function ManagerReportList({ placeId, placeName, roomId, assignedOnly, selectedS
   const [listPage, setListPage] = useState({ key: '', page: 0 })
   const [result, setResult] = useState(null)
   const filterKey = `${assignedOnly}:${placeId}:${roomId ?? ''}:${selectedStatus}`
+  if (listPage.key !== filterKey) setListPage({ key: filterKey, page: 0 })
   const page = listPage.key === filterKey ? listPage.page : 0
   const queryKey = `${assignedOnly ? `${assignedOnly}:${placeId}` : `${filterKey}:${page}`}:${attempt}`
   const currentResult = result?.key === queryKey ? result : null
