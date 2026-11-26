@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import styled from 'styled-components'
 import Button from '../../components/Button.jsx'
 import FieldError from '../../components/FieldError.jsx'
@@ -5,7 +6,7 @@ import TextField from '../../components/TextField.jsx'
 import useForm from '../../hooks/useForm.js'
 import ReportCategoryField from './ReportCategoryField.jsx'
 import ReportPhotoField from './ReportPhotoField.jsx'
-import { MAX_REPORT_PHOTOS, REPORT_CATEGORIES, REPORT_CATEGORY_CODES, validateReport } from './reportFormValidation.js'
+import { MAX_REPORT_PHOTOS, REPORT_CATEGORIES, REPORT_CATEGORY_CODES, REPORT_TEXT_LIMITS, validateReport } from './reportFormValidation.js'
 import useReportPhotos from './useReportPhotos.js'
 
 const Page = styled.main`
@@ -164,7 +165,9 @@ const pinIcon = (
   </svg>
 )
 
-export default function ReportForm({ room, initialReport, submitting = false, submitError, onPickRoom, onSubmit, onCancel }) {
+const serverErrorFocusOrder = ['category', 'title', 'content', 'improvement']
+
+export default function ReportForm({ room, initialReport, submitting = false, submitError, serverErrors = {}, onFieldEdit, onPickRoom, onSubmit, onCancel }) {
   const { photos, error: photoError, addPhotos, removePhoto } = useReportPhotos(MAX_REPORT_PHOTOS, initialReport?.photos)
   const { values, errors, handleChange, handleSubmit } = useForm(
     {
@@ -179,6 +182,23 @@ export default function ReportForm({ room, initialReport, submitting = false, su
       if (!submitting) onSubmit?.({ ...report, room, photos: photos.map((photo) => photo.imageUrl ?? photo.file) })
     },
   )
+  const formRef = useRef(null)
+
+  useEffect(() => {
+    const name = serverErrorFocusOrder.find((fieldName) => serverErrors[fieldName])
+    const field = name && formRef.current?.elements[name]
+    ;(field instanceof RadioNodeList ? field[0] : field)?.focus()
+  }, [serverErrors])
+
+  function changeField(event) {
+    handleChange(event)
+    onFieldEdit?.(event.target.name)
+  }
+
+  function lengthHelper(name) {
+    return `${values[name].length.toLocaleString()}/${REPORT_TEXT_LIMITS[name].toLocaleString()}`
+  }
+
   const submitLabel = initialReport ? '수정 저장' : '신고하기'
   const pendingLabel = initialReport ? '저장하는 중' : '신고하는 중'
 
@@ -200,15 +220,15 @@ export default function ReportForm({ room, initialReport, submitting = false, su
           <RoomInfo as="button" type="button" name="room" form="report-form" disabled={submitting} onClick={onPickRoom}>{pinIcon}지도에서 실 선택</RoomInfo>
         )}
       </Header>
-      <Form id="report-form" noValidate onSubmit={handleSubmit} aria-labelledby="report-form-title" aria-busy={submitting}>
+      <Form ref={formRef} id="report-form" noValidate onSubmit={handleSubmit} aria-labelledby="report-form-title" aria-busy={submitting}>
         <Card disabled={submitting}>
-          <FieldError>{!room && errors.room}</FieldError>
+          <FieldError>{(!room && errors.room) || serverErrors.room}</FieldError>
           <ReportCategoryField
             name="category"
             categories={REPORT_CATEGORIES}
             value={values.category}
-            error={errors.category}
-            onChange={handleChange}
+            error={errors.category || serverErrors.category}
+            onChange={changeField}
           />
           <TextField
             id="report-title"
@@ -216,8 +236,9 @@ export default function ReportForm({ room, initialReport, submitting = false, su
             label="제목"
             placeholder="제목을 입력하세요"
             value={values.title}
-            onChange={handleChange}
-            error={errors.title}
+            onChange={changeField}
+            error={errors.title || serverErrors.title}
+            helper={lengthHelper('title')}
           />
           <TextField
             id="report-content"
@@ -226,8 +247,9 @@ export default function ReportForm({ room, initialReport, submitting = false, su
             placeholder="불편한 점을 자세히 적어주세요."
             multiline
             value={values.content}
-            onChange={handleChange}
-            error={errors.content}
+            onChange={changeField}
+            error={errors.content || serverErrors.content}
+            helper={lengthHelper('content')}
           />
           <TextField
             id="report-improvement"
@@ -235,15 +257,23 @@ export default function ReportForm({ room, initialReport, submitting = false, su
             label="개선 방향 (선택)"
             placeholder="이렇게 바뀌면 좋겠어요"
             value={values.improvement}
-            onChange={handleChange}
-            error={errors.improvement}
+            onChange={changeField}
+            error={errors.improvement || serverErrors.improvement}
+            helper={lengthHelper('improvement')}
           />
           <ReportPhotoField
             photos={photos}
             maxCount={MAX_REPORT_PHOTOS}
-            error={photoError}
-            onAdd={(files) => { if (!submitting) addPhotos(files) }}
-            onRemove={removePhoto}
+            error={photoError || serverErrors.photos}
+            onAdd={(files) => {
+              if (submitting) return
+              addPhotos(files)
+              onFieldEdit?.('photos')
+            }}
+            onRemove={(id) => {
+              removePhoto(id)
+              onFieldEdit?.('photos')
+            }}
           />
           <FieldError>{submitError}</FieldError>
           <Footer>
