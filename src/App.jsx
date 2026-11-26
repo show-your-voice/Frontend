@@ -194,8 +194,7 @@ function HeaderLayout() {
   const navigate = useNavigate()
   const matches = useMatches()
   const header = [...matches].reverse().find((match) => match.handle?.header)?.handle.header
-  const sessionMatch = matches.find((match) => ['manager', 'manager-directory', 'manager-map'].includes(match.id))
-  const account = sessionMatch?.loaderData
+  const account = matches.find((match) => ['user-session', 'manager', 'manager-directory', 'manager-map'].includes(match.id))?.loaderData
   const isTeacher = account?.role === 'TEACHER'
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -207,11 +206,11 @@ function HeaderLayout() {
 
   return (
     <>
-      {(!sessionMatch || account) && (
+      {account && (
         <Header
           brand="너목보"
           navigationLabel={header?.navigationLabel ?? '교내 지도'}
-          userName={account?.name ?? '김학생'}
+          userName={account.name}
           userRole={isTeacher ? '관리자' : undefined}
           variant={isTeacher ? 'admin' : 'user'}
           loggingOut={loggingOut}
@@ -718,16 +717,17 @@ const router = createBrowserRouter([
     element: <HeaderLayout />,
     children: [
       {
+        id: 'user-session',
         loader: loadSession,
         HydrateFallback: SessionLoading,
         ErrorBoundary: SessionError,
         children: [
           { path: '/reports/:reportId', element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
           { path: '/reports/new', ...reportFormRoute, handle: { header: { navigationLabel: '신고 작성' } } },
+          { path: '/reports/:reportId/edit', ...editRoute },
           { index: true, element: <SchoolMapPage />, handle: { header: { navigationLabel: '교내 지도' } } },
         ],
       },
-      { path: '/reports/:reportId/edit', ...editRoute },
       {
         id: 'manager',
         path: '/manager/reports',
