@@ -73,7 +73,7 @@ export default function ReportDetailPanel({ reportId, onLoad, onBack, onDeleted 
       )}
       {!isLoading && result.report && (
         <ThemeProvider theme={panelTheme}>
-          <ReportDetail report={result.report} onBack={onBack} onDelete={removeReport} />
+          <ReportDetail report={result.report} onBack={onBack} onDelete={result.report.canEdit ? removeReport : undefined} />
         </ThemeProvider>
       )}
     </Panel>
