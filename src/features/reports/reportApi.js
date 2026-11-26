@@ -74,7 +74,7 @@ function toReportDetail(report) {
   }
 }
 
-export const REPORT_PAGE_SIZE = 10
+const REPORT_PAGE_SIZE = 10
 const ACTIVE_REPORTS_LIMIT = 2000
 
 const statusCodesByTone = Object.fromEntries(reportStatuses.map(({ code, tone }) => [tone, code]))
@@ -101,14 +101,11 @@ export async function fetchActivePlaceReports(placeId) {
   return pages.flatMap((data) => data.posts)
 }
 
-export function paginateReports(reports, page, size = REPORT_PAGE_SIZE) {
-  const totalPages = Math.max(Math.ceil(reports.length / size), 1)
-  const currentPage = Math.min(page, totalPages - 1)
+export function paginateReports(reports, page) {
   return {
-    reports: reports.slice(currentPage * size, (currentPage + 1) * size),
+    reports: reports.slice(page * REPORT_PAGE_SIZE, (page + 1) * REPORT_PAGE_SIZE),
     totalCount: reports.length,
-    totalPages,
-    page: currentPage,
+    totalPages: Math.ceil(reports.length / REPORT_PAGE_SIZE),
   }
 }
 

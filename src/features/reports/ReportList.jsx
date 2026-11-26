@@ -124,9 +124,6 @@ export default function ReportList({
     headingRef.current?.focus({ preventScroll: true })
   }
 
-  const visibleReports = selectedStatus === 'all'
-    ? reports
-    : reports.filter((report) => report.status.tone === selectedStatus)
   const noReportsMessage = selectedStatus === 'all'
     ? emptyMessage
     : '선택한 상태의 신고가 없어요.'
@@ -135,7 +132,7 @@ export default function ReportList({
     <Panel ref={panelRef} aria-labelledby="report-list-heading">
       <HeadingRow>
         <Heading id="report-list-heading" ref={headingRef} tabIndex={-1}>
-          {title} <Count aria-live="polite">{totalCount ?? visibleReports.length}</Count>
+          {title} <Count aria-live="polite">{totalCount ?? reports.length}</Count>
         </Heading>
         {headingAction}
       </HeadingRow>
@@ -161,14 +158,14 @@ export default function ReportList({
           {onRetry && <OutlineButton onClick={onRetry}>다시 시도</OutlineButton>}
         </State>
       )}
-      {!isLoading && !errorMessage && visibleReports.length === 0 && (
+      {!isLoading && !errorMessage && reports.length === 0 && (
         <State role="status">
           <StateMessage>{noReportsMessage}</StateMessage>
         </State>
       )}
-      {!isLoading && !errorMessage && visibleReports.length > 0 && (
+      {!isLoading && !errorMessage && reports.length > 0 && (
         <List>
-          {visibleReports.map((report) => (
+          {reports.map((report) => (
             <li key={report.id}>
               <ReportCard
                 {...report}
